@@ -27,3 +27,8 @@ pub(crate) fn discard(handle: MemlessHandle) {
     drop(table);
     drop(base);
 }
+
+pub(crate) fn with_base<R>(handle: MemlessHandle, body: impl FnOnce(&Base) -> R) -> Option<R> {
+    let table = INSTANCES.lock().unwrap_or_else(PoisonError::into_inner);
+    table.bases.get(&handle).map(body)
+}
