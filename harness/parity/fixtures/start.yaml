@@ -1,0 +1,12 @@
+users:
+  - id: 01H7B2
+    name: Ada
+  - id: 01H7B3
+    name: Grace
+wallets:
+  - id: w_123
+    user_id: 01H7B3
+    amount: 100
+  - id: w_124
+    user_id: 01H7B2
+    amount: 250

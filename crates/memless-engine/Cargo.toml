@@ -1,0 +1,8 @@
+[package]
+name = "memless-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+memless-domain = { path = "../memless-domain" }
+serde-saphyr = { workspace = true }
