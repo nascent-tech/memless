@@ -8,11 +8,13 @@ mod build_table;
 mod column_relation;
 mod duplicates;
 mod faults;
+mod filter;
 mod index;
 mod relation_context;
 mod relation_lookup;
 mod relation_resolve;
 mod relations;
+mod render;
 mod row;
 mod row_id;
 mod row_relations;
@@ -21,13 +23,16 @@ mod table;
 mod table_relations;
 mod table_uniqueness;
 mod uniqueness;
+mod verify;
+mod write;
 
 use build::build_tables;
-use index::build_index;
-use relations::check_relations;
 use table::Table;
-use uniqueness::check_uniqueness;
+use verify::verify;
 
+pub use write::Applied;
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     tables: Vec<Table>,
 }
@@ -36,9 +41,7 @@ impl Base {
     pub fn load(document: RawDocument) -> Result<Base, StructureRefusal> {
         let shaped = check_shape(document)?;
         let tables = build_tables(&shaped)?;
-        check_uniqueness(&tables)?;
-        let index = build_index(&tables);
-        check_relations(&tables, &index)?;
+        verify(&tables)?;
         Ok(Base { tables })
     }
 }

@@ -3,7 +3,7 @@ use std::fmt;
 use crate::document::{RawScalar, RawStyle};
 
 mod decimal;
-mod decimal_display;
+pub(crate) mod decimal_display;
 mod integer;
 mod keyword;
 pub(crate) mod scalar_order;

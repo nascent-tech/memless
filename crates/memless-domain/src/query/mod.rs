@@ -1,17 +1,27 @@
 mod aggregate;
 mod column_ref;
 mod compare;
+mod delete;
 mod filter;
+mod insert;
 mod items;
 mod join;
 mod op;
 mod select;
+mod statement;
+mod update;
+mod write;
 
 pub use aggregate::Aggregate;
 pub use column_ref::ColumnRef;
 pub use compare::Compare;
+pub use delete::Delete;
 pub use filter::Filter;
+pub use insert::Insert;
 pub use items::Items;
 pub use join::Join;
 pub use op::Op;
 pub use select::Select;
+pub use statement::Statement;
+pub use update::Update;
+pub use write::Write;
