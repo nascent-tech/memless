@@ -9,7 +9,7 @@ statut: valide
 ---
 
 <!-- charpente-navigation -->
-**Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › [mvp — Prouver la promesse de Memless](../mvp/00-index.md) › **cadrage — Palier 1 — Charger et refuser**  
+**Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › [mvp — Prouver la promesse de Memless](../mvp/00-index.md) › **cadrage — Palier 1 — Charger et refuser** › [conception — Palier 1 — Charger et refuser](../conceptions/2026-09-21-palier-1-charger-refuser/00-index.md) › [plan — Palier 1 — Charger et refuser](../plans/2026-09-21-palier-1-charger-refuser/00-index.md)  
 **Maillage** : [maillage.md](../maillage.md)
 
 *Bloc généré — il se retisse à chaque écriture, ne l'édite pas à la main.*

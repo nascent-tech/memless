@@ -8,7 +8,7 @@ statut: valide
 ---
 
 <!-- charpente-navigation -->
-**Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › **mvp — Prouver la promesse de Memless** › [cadrage — Palier 1 — Charger et refuser](../cadrage/2026-09-21-palier-1-charger-refuser.md)  
+**Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › **mvp — Prouver la promesse de Memless** › [cadrage — Palier 1 — Charger et refuser](../cadrage/2026-09-21-palier-1-charger-refuser.md) › [conception — Palier 1 — Charger et refuser](../conceptions/2026-09-21-palier-1-charger-refuser/00-index.md) › [plan — Palier 1 — Charger et refuser](../plans/2026-09-21-palier-1-charger-refuser/00-index.md)  
 **Parties** : [1. Le geste qui prouve](01-le-geste-et-le-tri.md) · [4. Ce qu'on accepte de faire mal](02-faiblesses-et-garanties.md) · [6. L'ordre, et ce que chaque étape rend démontrable](03-paliers-fini-trompe.md)  
 **Maillage** : [maillage.md](../maillage.md)
 
