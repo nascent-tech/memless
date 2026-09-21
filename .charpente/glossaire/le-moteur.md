@@ -52,8 +52,11 @@ brief (§) et le cadrage du palier 1.
   dupliquée) ; distinct d'une **structure incohérente** (forme correcte, données qui se
   contredisent) (§8.1, §8.2).
 - **Résidu** — le fichier à part qu'une écriture a commencé et qu'un arrêt brutal a laissé
-  sans substitution ; nom reconnaissable, jamais officiel, jamais touché par Memless (§8.6,
-  décision 17). Le brief dit « fichier à part ».
+  sans substitution ; nom reconnaissable, jamais officiel. **Au chargement**, Memless n'y touche
+  jamais (§8.6, décision 17). **En écriture** (palier 3), Memless gère le sien : il le crée, et si
+  l'écriture échoue avant la substitution, il le supprime lui-même ; un résidu hérité d'un plantage
+  est écrasé par la création du prochain résidu. Le seul résidu que Memless touche est celui de
+  l'écriture en cours. Le brief dit « fichier à part ».
 - **Parité** — sur le même fichier, deux ponts produisent la même issue : même acceptation, ou
   même refus avec le même message (§10, décision 25). Un écart est un défaut.
 - **Réécriture par substitution** — écrire d'abord un fichier à part, forcer son écriture sur

@@ -6,3 +6,4 @@ Généré — ne s'édite pas à la main. La vue d'ensemble vit dans `.charpente
 |---|---|---|---|---|---|---|
 | .charpente/cadrage/2026-09-21-palier-1-charger-refuser.md | cadrage | Palier 1 — Charger et refuser | valide | — | .charpente/mvp | .charpente/conceptions/2026-09-21-palier-1-charger-refuser |
 | .charpente/cadrage/2026-09-21-palier-2-interroger.md | cadrage | Palier 2 — Interroger | valide | — | .charpente/mvp | .charpente/conceptions/2026-09-21-palier-2-interroger |
+| .charpente/cadrage/2026-09-21-palier-3-ecrire.md | cadrage | Palier 3 — Écrire | valide | — | .charpente/mvp | .charpente/conceptions/2026-09-21-palier-3-ecrire |
