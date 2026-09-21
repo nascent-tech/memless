@@ -8,7 +8,7 @@ statut: valide
 ---
 
 <!-- charpente-navigation -->
-**Le fil** : **brief — Moteur de base de données en mémoire pilotée par YAML** › [mvp — Prouver la promesse de Memless](../mvp/00-index.md)  
+**Le fil** : **brief — Moteur de base de données en mémoire pilotée par YAML** › [mvp — Prouver la promesse de Memless](../mvp/00-index.md) › [cadrage — Palier 1 — Charger et refuser](../cadrage/2026-09-21-palier-1-charger-refuser.md)  
 **Parties** : [1. Le projet en une page](01-le-produit-et-son-public.md) · [5. Le cadre imposé](02-cadre-et-acteurs.md) · [7. Les besoins, séparés des solutions](03-besoins-et-fonctionnalites.md) · [9. Les fonctionnalités décisives](04-fonctionnalite-decisive.md) · [10. Les règles transverses](05-regles-et-limites.md) · [13. Ce qui est interdit](06-interdits-et-hors-perimetre.md) · [15. Les décisions, et ce que chacune écarte](07-decisions.md) · [16. Ce qui vient après le lancement](08-suite-hypotheses-sources.md)  
 **Maillage** : [maillage.md](../maillage.md)
 
