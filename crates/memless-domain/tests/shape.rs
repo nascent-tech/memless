@@ -5,7 +5,7 @@ use memless_domain::document::{RawDocument, RawNode};
 use memless_domain::Base;
 
 fn refusal_of(document: RawDocument) -> String {
-    Base::load(document).err().expect("expected a refusal").to_string()
+    Base::load(document).expect_err("expected a refusal").to_string()
 }
 
 #[test]

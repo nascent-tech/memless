@@ -1,6 +1,6 @@
 use crate::query::{ColumnRef, Filter};
 
-pub(crate) fn collect_filter_node<'a>(
+pub(crate) fn collect_node<'a>(
     node: &'a Filter,
     columns: &mut Vec<&'a ColumnRef>,
     stack: &mut Vec<&'a Filter>,
