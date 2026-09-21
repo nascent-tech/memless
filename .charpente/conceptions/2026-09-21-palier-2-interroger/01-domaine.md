@@ -207,7 +207,11 @@ rendant `None` entre deux types différents (jamais ordonnés — décision 34).
 **Refus typés** : `QueryRefusal` (Q3–Q5, Q7, Q8). Q1–Q2 n'atteignent jamais ici.
 
 **Ne fait pas** : n'analyse aucun texte ; ne modifie jamais `Base` (lecture seule) ; ne convertit
-jamais un type en un autre ; n'invente aucun ordre entre types.
+jamais un type en un autre ; n'invente aucun ordre entre types. Il **suppose un `Select` valide**
+au sens du sous-ensemble : les constructions hors sous-ensemble (auto-jointure, colonne non
+qualifiée dans une jointure, tri) sont refusées **en amont** par `sql/` (Q2) — le domaine ne les
+rejuge pas. Une somme décimale qui déborde en `inf` est rendue telle quelle (le débordement
+chiffré Q8 ne vise que l'entier — cadrage point 7).
 
 ---
 
