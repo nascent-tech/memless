@@ -28,6 +28,11 @@ if grep -q '^DIVERGENCE start.yaml' <<<"$out"; then
 	echo "$out"
 	exit 1
 fi
+if ! grep -q '^QUERY DRIVER FAILURE' <<<"$out"; then
+	echo "regression: a bad query driver (output not ok/refused/fault) was not caught"
+	echo "$out"
+	exit 1
+fi
 
-echo "regression: divergence detected and named as expected"
+echo "regression: load divergence and bad query driver detected and named as expected"
 exit 0

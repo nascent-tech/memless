@@ -12,9 +12,8 @@ lib=""
 for profile in debug release; do
 	for ext in dylib so; do
 		candidate="$root/target/$profile/libmemless_capi.$ext"
-		if [ -f "$candidate" ]; then
+		if [ -f "$candidate" ] && { [ -z "$lib" ] || [ "$candidate" -nt "$lib" ]; }; then
 			lib="$candidate"
-			break 2
 		fi
 	done
 done
@@ -66,6 +65,13 @@ is_outcome() {
 	esac
 }
 
+is_query_outcome() {
+	case "$1" in
+	ok* | "refused: "* | "fault: "*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
 diverged=0
 for fixture in "${fixtures[@]}"; do
 	name=$(basename "$fixture")
@@ -91,7 +97,35 @@ if ! cmp -s "$residue" "$residue_before"; then
 fi
 rm -f "$residue_before"
 
+queries="$here/queries.txt"
+if [ -f "$queries" ]; then
+	while IFS=$'\t' read -r fixture sql; do
+		case "$fixture" in '' | \#*) continue ;; esac
+		path="$here/fixtures/$fixture"
+		if [ ! -f "$path" ]; then
+			echo "QUERY SETUP ERROR: queries.txt names a missing fixture: $fixture"
+			exit 2
+		fi
+		php_out=$("${php_driver[@]}" "$path" "$sql" 2>/dev/null)
+		php_status=$?
+		go_out=$("${go_driver[@]}" "$path" "$sql" 2>/dev/null)
+		go_status=$?
+		if [ "$php_status" -ne 0 ] || ! is_query_outcome "$php_out"; then
+			echo "QUERY DRIVER FAILURE [$fixture | $sql] (php): status=$php_status out=[$php_out]"
+			diverged=1
+		elif [ "$go_status" -ne 0 ] || ! is_query_outcome "$go_out"; then
+			echo "QUERY DRIVER FAILURE [$fixture | $sql] (go): status=$go_status out=[$go_out]"
+			diverged=1
+		elif [ "$php_out" != "$go_out" ]; then
+			echo "QUERY DIVERGENCE [$fixture | $sql]"
+			echo "  php=[$php_out]"
+			echo "  go =[$go_out]"
+			diverged=1
+		fi
+	done <"$queries"
+fi
+
 if [ "$diverged" -eq 0 ]; then
-	echo "parity: all fixtures agree on both bridges"
+	echo "parity: all fixtures and queries agree on both bridges"
 fi
 exit "$diverged"

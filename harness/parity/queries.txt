@@ -1,0 +1,33 @@
+# One query per line: <fixture><TAB><sql>. Both bridges must print the same.
+# Nominal reads on start.yaml (users: text id + name; wallets: text user_id + int amount).
+start.yaml	SELECT name FROM users
+start.yaml	SELECT name FROM users WHERE id = '01H7B2'
+start.yaml	SELECT name FROM users WHERE id = 999
+start.yaml	SELECT COUNT(*) FROM users
+start.yaml	SELECT SUM(amount) FROM wallets
+start.yaml	SELECT users.name FROM wallets JOIN users ON wallets.user_id = users.id
+# Each cell kind on kinds.yaml (decimal, boolean, text, absent).
+kinds.yaml	SELECT ratio FROM things
+kinds.yaml	SELECT active FROM things
+kinds.yaml	SELECT label FROM things
+# The trap: the join matches id 5 and never "5".
+trap.yaml	SELECT users.id FROM wallets JOIN users ON wallets.user_id = users.id
+# Refusals, each naming its rule (Q1-Q5).
+start.yaml	not a query at all
+start.yaml	SELECT * FROM ghosts
+start.yaml	SELECT ghost FROM users
+start.yaml	SELECT * FROM users GROUP BY id
+start.yaml	SELECT * FROM users LIMIT 1
+start.yaml	SELECT * FROM wallets JOIN users ON wallets.amount = users.id
+# Read-side comparison rule on the trap: 5 and "5" filter apart.
+trap.yaml	SELECT id FROM users WHERE id = 5
+trap.yaml	SELECT id FROM users WHERE id = '5'
+# Aggregates: empty count, empty sum, sum refusal (Q7), qualified join headers.
+start.yaml	SELECT COUNT(*) FROM users WHERE id = 'nope'
+start.yaml	SELECT SUM(amount) FROM wallets WHERE id = 'nope'
+start.yaml	SELECT SUM(name) FROM users
+start.yaml	SELECT * FROM wallets JOIN users ON wallets.user_id = users.id
+# ORDER BY is out of subset (Q2); decimals cross the bridge as IEEE bits.
+start.yaml	SELECT * FROM users ORDER BY id
+kinds.yaml	SELECT third FROM things
+kinds.yaml	SELECT SUM(third) FROM things
