@@ -1,0 +1,5 @@
+settings:
+  - id: 1
+    limit: &lim 10
+  - id: 2
+    limit: *lim
