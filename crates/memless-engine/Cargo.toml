@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 memless-domain = { path = "../memless-domain" }
 serde-saphyr = { workspace = true }
+sqlparser = "=0.54.0"
