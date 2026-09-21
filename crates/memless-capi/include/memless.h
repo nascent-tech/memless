@@ -9,7 +9,7 @@ typedef int32_t MemlessStatus;
 /* 0 = Absent, 1 = Text, 2 = Integer, 3 = Decimal, 4 = Boolean */
 typedef int32_t MemlessKind;
 
-/* ABI version 2. */
+/* ABI version 3. */
 uint32_t memless_abi_version(void);
 
 /*
@@ -27,8 +27,8 @@ MemlessStatus memless_load(const char *path, MemlessHandle *out_handle, char **o
  * owned message the caller must release with `memless_free_string`. On Ok,
  * `*out_result` receives a result handle >= 1 the caller must release with
  * `memless_result_release`. A null `sql` or `out_result`, or an unknown handle,
- * yields InvalidArgument. `out_result` and `out_message` may be null; a null
- * pointer is never written through.
+ * yields InvalidArgument. `out_message` may be null; a null pointer is never
+ * written through.
  *
  * The result is an independent copy: it stays valid after the instance is
  * released. Borrowed pointers (see below) are NOT synchronised with a
@@ -36,6 +36,21 @@ MemlessStatus memless_load(const char *path, MemlessHandle *out_handle, char **o
  * release a result while it still holds a pointer into it.
  */
 MemlessStatus memless_query(MemlessHandle handle, const char *sql, MemlessResult *out_result, char **out_message);
+
+/*
+ * Runs a write `sql` (INSERT/UPDATE/DELETE) against the instance behind `handle`.
+ * When `out_message` is non-null it is always written: NULL on Ok, otherwise an
+ * owned message the caller must release with `memless_free_string`. On Ok,
+ * `*out_affected` receives the affected row count. A null `sql`, or an unknown
+ * handle, yields InvalidArgument; a SELECT, a validation failure or a disk failure
+ * yields Refused with a message. `out_affected` and `out_message` may be null; a
+ * null pointer is never written through, so a null `out_affected` simply drops the
+ * count while the write still happens. An accepted write that changes the state
+ * rewrites the file by substitution before the count is returned; a write that
+ * changes nothing does not touch the disk. Like memless_query, an execute holds a
+ * process-wide lock across the file rewrite (fsync + rename).
+ */
+MemlessStatus memless_execute(MemlessHandle handle, const char *sql, uint64_t *out_affected, char **out_message);
 
 /* Number of columns / rows in the result; 0 for an unknown result. */
 uint64_t memless_result_column_count(MemlessResult result);

@@ -3,6 +3,7 @@ use std::ptr;
 
 use crate::column_ptr::column_ptr;
 use crate::compute::compute;
+use crate::execute_compute::execute_compute;
 use crate::ffi::free_string;
 use crate::instances::discard;
 use crate::outcome::Outcome;
@@ -18,8 +19,10 @@ mod cell;
 mod cell_at;
 mod column_ptr;
 mod compute;
+mod execute_compute;
 mod ffi;
 mod instances;
+mod run_execute;
 mod kind;
 mod message_ptr;
 mod outcome;
@@ -43,7 +46,7 @@ pub use ffi::{guard, own_message};
 pub use kind::MemlessKind;
 pub use status::{MemlessHandle, MemlessResult, MemlessStatus};
 
-const ABI_VERSION: u32 = 2;
+const ABI_VERSION: u32 = 3;
 
 #[no_mangle]
 pub extern "C" fn memless_abi_version() -> u32 {
@@ -77,6 +80,21 @@ pub unsafe extern "C" fn memless_query(
 ) -> MemlessStatus {
     let outcome = guard(Outcome::internal(), || unsafe { query_compute(handle, sql, out_result.is_null()) });
     write_outcome(out_result, out_message, outcome)
+}
+
+/// Runs a write `sql` against `handle`. See `include/memless.h` for the contract.
+///
+/// # Safety
+/// `sql`, `out_affected` and `out_message` follow the header's contract.
+#[no_mangle]
+pub unsafe extern "C" fn memless_execute(
+    handle: MemlessHandle,
+    sql: *const c_char,
+    out_affected: *mut u64,
+    out_message: *mut *mut c_char,
+) -> MemlessStatus {
+    let outcome = guard(Outcome::internal(), || unsafe { execute_compute(handle, sql) });
+    write_outcome(out_affected, out_message, outcome)
 }
 
 #[no_mangle]

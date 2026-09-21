@@ -1,23 +1,129 @@
 use std::collections::HashSet;
 use std::ffi::{c_char, CStr, CString};
+use std::path::PathBuf;
 use std::ptr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
 use memless_capi::{
-    memless_abi_version, memless_free_string, memless_load, memless_query, memless_release,
-    memless_result_cell, memless_result_column, memless_result_column_count, memless_result_release,
-    memless_result_row_count, MemlessKind, MemlessStatus,
+    memless_abi_version, memless_execute, memless_free_string, memless_load, memless_query,
+    memless_release, memless_result_cell, memless_result_column, memless_result_column_count,
+    memless_result_release, memless_result_row_count, MemlessKind, MemlessStatus,
 };
+
+static EXEC_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn fixture(name: &str) -> CString {
     let base = concat!(env!("CARGO_MANIFEST_DIR"), "/../../harness/parity/fixtures");
     CString::new(format!("{base}/{name}")).expect("fixture path")
 }
 
+fn fixture_source(name: &str) -> PathBuf {
+    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../harness/parity/fixtures")).join(name)
+}
+
+fn temp_workdir() -> PathBuf {
+    let dir = std::env::temp_dir()
+        .join("memless-capi-exec")
+        .join(format!("w-{}", EXEC_COUNTER.fetch_add(1, Ordering::Relaxed)));
+    std::fs::create_dir_all(&dir).expect("create temp dir");
+    dir
+}
+
+fn load_copy(name: &str) -> (u64, PathBuf) {
+    let dir = temp_workdir();
+    let dest = dir.join(name);
+    std::fs::copy(fixture_source(name), &dest).expect("copy fixture");
+    let cpath = CString::new(dest.to_str().expect("utf-8")).expect("c string");
+    let mut handle: u64 = 0;
+    let mut message: *mut c_char = ptr::null_mut();
+    let status = unsafe { memless_load(cpath.as_ptr(), &mut handle, &mut message) };
+    assert_eq!(status, MemlessStatus::Ok);
+    (handle, dir)
+}
+
+fn run_execute(handle: u64, sql: &str) -> (MemlessStatus, u64) {
+    let csql = CString::new(sql).expect("c string");
+    let mut affected: u64 = 0;
+    let mut message: *mut c_char = ptr::null_mut();
+    let status = unsafe { memless_execute(handle, csql.as_ptr(), &mut affected, &mut message) };
+    if !message.is_null() {
+        unsafe { memless_free_string(message) };
+    }
+    (status, affected)
+}
+
 #[test]
-fn reports_abi_version_two() {
-    assert_eq!(memless_abi_version(), 2);
+fn reports_abi_version_three() {
+    assert_eq!(memless_abi_version(), 3);
+}
+
+#[test]
+fn executes_a_write_and_counts_the_rows() {
+    let (handle, _dir) = load_copy("start.yaml");
+    let (status, affected) = run_execute(handle, "UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'");
+    assert_eq!(status, MemlessStatus::Ok);
+    assert_eq!(affected, 1);
+    memless_release(handle);
+}
+
+#[test]
+fn a_select_passed_to_execute_is_refused() {
+    let (handle, _dir) = load_copy("start.yaml");
+    let (status, _) = run_execute(handle, "SELECT * FROM users");
+    assert_eq!(status, MemlessStatus::Refused);
+    memless_release(handle);
+}
+
+#[test]
+fn an_unknown_handle_execute_is_invalid_argument() {
+    let (status, _) = run_execute(987_654, "DELETE FROM users");
+    assert_eq!(status, MemlessStatus::InvalidArgument);
+}
+
+#[test]
+fn a_null_out_affected_drops_the_count_but_still_writes() {
+    let (handle, _dir) = load_copy("start.yaml");
+    let csql = CString::new("DELETE FROM wallets").expect("c string");
+    let status = unsafe { memless_execute(handle, csql.as_ptr(), ptr::null_mut(), ptr::null_mut()) };
+    assert_eq!(status, MemlessStatus::Ok);
+    let (qstatus, result) = run_query(handle, "SELECT COUNT(*) FROM wallets");
+    assert_eq!(qstatus, MemlessStatus::Ok);
+    let mut integer: i64 = -1;
+    unsafe { memless_result_cell(result, 0, 0, &mut integer, ptr::null_mut(), ptr::null_mut(), ptr::null_mut()) };
+    assert_eq!(integer, 0);
+    memless_result_release(result);
+    memless_release(handle);
+}
+
+#[test]
+fn a_null_sql_execute_is_invalid_argument() {
+    let (handle, _dir) = load_copy("start.yaml");
+    let mut affected: u64 = 0;
+    let mut message: *mut c_char = ptr::null_mut();
+    let status = unsafe { memless_execute(handle, ptr::null(), &mut affected, &mut message) };
+    assert_eq!(status, MemlessStatus::InvalidArgument);
+    if !message.is_null() {
+        unsafe { memless_free_string(message) };
+    }
+    memless_release(handle);
+}
+
+#[test]
+fn a_disk_failure_is_refused_and_leaves_memory_intact() {
+    let (handle, dir) = load_copy("start.yaml");
+    std::fs::remove_dir_all(&dir).expect("remove workdir");
+    let (status, _) = run_execute(handle, "UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'");
+    assert_eq!(status, MemlessStatus::Refused);
+    let (qstatus, result) = run_query(handle, "SELECT name FROM users WHERE id = '01H7B2'");
+    assert_eq!(qstatus, MemlessStatus::Ok);
+    let mut text: *const c_char = ptr::null();
+    unsafe { memless_result_cell(result, 0, 0, ptr::null_mut(), ptr::null_mut(), ptr::null_mut(), &mut text) };
+    let value = unsafe { CStr::from_ptr(text) }.to_str().expect("utf-8").to_string();
+    assert_eq!(value, "Ada");
+    memless_result_release(result);
+    memless_release(handle);
 }
 
 fn load_handle(name: &str) -> u64 {

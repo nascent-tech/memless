@@ -1,34 +1,39 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, PoisonError};
 
-use memless_engine::Base;
+use memless_engine::Instance;
 
 use crate::status::MemlessHandle;
 
 #[derive(Default)]
 struct Table {
     next: MemlessHandle,
-    bases: HashMap<MemlessHandle, Base>,
+    instances: HashMap<MemlessHandle, Instance>,
 }
 
 static INSTANCES: LazyLock<Mutex<Table>> = LazyLock::new(|| Mutex::new(Table::default()));
 
-pub(crate) fn store(base: Base) -> MemlessHandle {
+pub(crate) fn store(instance: Instance) -> MemlessHandle {
     let mut table = INSTANCES.lock().unwrap_or_else(PoisonError::into_inner);
     table.next = table.next.saturating_add(1);
     let handle = table.next;
-    table.bases.insert(handle, base);
+    table.instances.insert(handle, instance);
     handle
 }
 
 pub(crate) fn discard(handle: MemlessHandle) {
     let mut table = INSTANCES.lock().unwrap_or_else(PoisonError::into_inner);
-    let base = table.bases.remove(&handle);
+    let instance = table.instances.remove(&handle);
     drop(table);
-    drop(base);
+    drop(instance);
 }
 
-pub(crate) fn with_base<R>(handle: MemlessHandle, body: impl FnOnce(&Base) -> R) -> Option<R> {
+pub(crate) fn with_instance<R>(handle: MemlessHandle, body: impl FnOnce(&Instance) -> R) -> Option<R> {
     let table = INSTANCES.lock().unwrap_or_else(PoisonError::into_inner);
-    table.bases.get(&handle).map(body)
+    table.instances.get(&handle).map(body)
+}
+
+pub(crate) fn with_instance_mut<R>(handle: MemlessHandle, body: impl FnOnce(&mut Instance) -> R) -> Option<R> {
+    let mut table = INSTANCES.lock().unwrap_or_else(PoisonError::into_inner);
+    table.instances.get_mut(&handle).map(body)
 }
