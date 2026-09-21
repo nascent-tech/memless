@@ -10,6 +10,8 @@
 
 # PHP / Composer
 vendor/
+.phpunit.result.cache
+.phpunit.cache/
 
 # Go build output
 *.test
