@@ -1,0 +1,7 @@
+# Le maillage — mvp
+
+Généré — ne s'édite pas à la main. La vue d'ensemble vit dans `.charpente/maillage.md`.
+
+| Document | Type | Titre | Statut | Parties | Amont | Aval |
+|---|---|---|---|---|---|---|
+| .charpente/mvp/ | mvp | Prouver la promesse de Memless | valide | 01-le-geste-et-le-tri.md · 02-faiblesses-et-garanties.md · 03-paliers-fini-trompe.md | .charpente/brief | — |
