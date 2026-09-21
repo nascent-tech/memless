@@ -1,2 +1,15 @@
+# macOS
 .DS_Store
+
+# Claude Code
 .claude/*.lock
+
+# Rust
+/target/
+**/target/
+
+# PHP / Composer
+vendor/
+
+# Go build output
+*.test
