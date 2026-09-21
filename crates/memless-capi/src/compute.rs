@@ -17,7 +17,7 @@ pub(crate) unsafe fn compute(path: *const c_char, out_handle_null: bool) -> Outc
         Err(error) => return Outcome::invalid(error.describe()),
     };
     match load(read, &owned) {
-        Ok(instance) => Outcome::accepted(store(instance.base)),
+        Ok(instance) => Outcome::accepted(store(instance)),
         Err(refusal) => Outcome::refused(refusal.to_string()),
     }
 }
