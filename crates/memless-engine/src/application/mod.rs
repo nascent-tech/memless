@@ -1,5 +1,10 @@
+mod apply;
 mod build;
+mod disk_failure;
 pub mod instance;
+mod kind_label;
 pub mod load;
+mod persist;
 pub mod query;
 pub mod replace_file;
+pub mod write;
