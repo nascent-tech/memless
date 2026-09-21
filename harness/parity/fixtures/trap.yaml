@@ -1,0 +1,6 @@
+users:
+  - id: 5
+  - id: "5"
+wallets:
+  - id: w1
+    user_id: 5

@@ -11,13 +11,13 @@ final class LibraryTest extends TestCase
 {
     public function testAcceptsTheExpectedAbiVersion(): void
     {
-        Library::checkVersion(1);
+        Library::checkVersion(2);
         $this->expectNotToPerformAssertions();
     }
 
     public function testRejectsAnUnexpectedAbiVersion(): void
     {
         $this->expectException(\LogicException::class);
-        Library::checkVersion(2);
+        Library::checkVersion(1);
     }
 }
