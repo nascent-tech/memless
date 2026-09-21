@@ -1,11 +1,16 @@
 # Parity harness
 
-The **battery** is the set of fixtures under `fixtures/` that palier 1 must load
-or refuse. The **launcher** (`run.sh`) replays each one through the PHP bridge
-and then the Go bridge and requires the **same issue and the same message** from
-both. The **parity record** is its output: either `parity: all fixtures agree on
-both bridges` (exit 0), or one `DIVERGENCE <fixture>: php=[…] go=[…]` line per
-disagreement (exit non-zero).
+The **battery** has two parts: the fixtures under `fixtures/` that must load or
+refuse (palier 1), and the queries in `queries.txt` (`<fixture><TAB><sql>`, one
+per line) that must return the same rows or the same refusal (palier 2). The
+**launcher** (`run.sh`) replays each through the PHP bridge and then the Go
+bridge and requires the **same issue and the same message** from both: loads
+compare `accepted`/`refused:`/`fault:`, queries compare a canonical rendering
+(columns, rows, per-cell kind — decimals as IEEE-754 bits so both languages
+agree — or `refused:`/`fault:`). The **parity record** is its output: either
+`parity: all fixtures and queries agree on both bridges` (exit 0), or a
+`DIVERGENCE`, `QUERY DIVERGENCE`, or `QUERY DRIVER FAILURE` line per problem
+(exit non-zero). It uses the newest built `libmemless_capi`, or `MEMLESS_LIB`.
 
 ## Running
 
