@@ -3,7 +3,7 @@ type: glossaire
 titre: Glossaire — le moteur
 slug: le-moteur
 cree_le: 2026-09-21T15:19:48+0000
-mis_a_jour_le: 2026-09-21T15:20:52+0000
+mis_a_jour_le: 2026-09-21T16:00:07+0000
 branche: main
 statut: valide
 ---
@@ -22,6 +22,10 @@ convention de nom, imposer la règle de comparaison unique, refuser en nommant l
 Termes propres au contexte, du plus court nom qui les désigne. Les définitions reprennent le
 brief (§) et le cadrage du palier 1.
 
+- **Base** — l'état deviné et cohérent d'un fichier accepté : toutes ses tables, une fois
+  la structure devinée et les contraintes vérifiées. C'est ce qu'une **instance** tient en
+  mémoire. Ne pas confondre avec la **structure devinée** (la forme, pas l'état) ni avec le
+  **fichier** (la source de vérité sur le disque). Nom en code : `Base`.
 - **Structure devinée** — la forme des tables (types, `id`, relations) déduite des seules
   données, jamais déclarée à part ; redérivée à chaque vérification (§10, décision 37).
 - **Relation devinée** — une colonne dont le nom finit par `_id`, pointant vers la table au
