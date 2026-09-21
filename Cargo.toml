@@ -1,6 +1,15 @@
 [workspace]
 resolver = "2"
-members = ["crates/memless-domain", "crates/memless-engine"]
+members = ["crates/memless-domain", "crates/memless-engine", "crates/memless-capi"]
 
 [workspace.dependencies]
 serde-saphyr = "=1.3.0"
+
+# memless-capi wraps every C entry point in catch_unwind (conception §04). A
+# panic = "abort" profile would disarm that guard and abort the host process on
+# any unwind, so both profiles keep the unwind strategy explicit.
+[profile.dev]
+panic = "unwind"
+
+[profile.release]
+panic = "unwind"
