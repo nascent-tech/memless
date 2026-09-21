@@ -11,7 +11,7 @@ impl FfiError {
     pub(crate) fn describe(&self) -> &'static str {
         match self {
             FfiError::NullPointer => "null pointer argument",
-            FfiError::InvalidUtf8 => "path is not valid UTF-8",
+            FfiError::InvalidUtf8 => "argument is not valid UTF-8",
         }
     }
 }

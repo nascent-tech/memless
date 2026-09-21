@@ -8,3 +8,5 @@ pub enum MemlessStatus {
 }
 
 pub type MemlessHandle = u64;
+
+pub type MemlessResult = u64;
