@@ -28,7 +28,7 @@ wallets:
     balance: 50
 ";
     let path = temp_file(&unique("query-shop"), yaml);
-    load(read, &read_path(&path)).unwrap()
+    load(read, &read_path(&path)).unwrap().base
 }
 
 fn trap() -> Base {
@@ -41,7 +41,7 @@ wallets:
     user_id: 5
 ";
     let path = temp_file(&unique("query-trap"), yaml);
-    load(read, &read_path(&path)).unwrap()
+    load(read, &read_path(&path)).unwrap().base
 }
 
 #[test]
