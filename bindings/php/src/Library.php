@@ -9,7 +9,7 @@ namespace Memless;
  */
 final class Library
 {
-    private const ABI_VERSION = 2;
+    private const ABI_VERSION = 3;
 
     private static ?\FFI $ffi = null;
 
