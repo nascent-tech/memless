@@ -104,9 +104,90 @@ function escape(string $text): string
     return str_replace(["\\", "\t", "\n"], ['\\\\', '\t', '\n'], $text);
 }
 
-$mode = $argv[2] ?? null;
-if ($mode !== null) {
-    echo queryOutcome($argv[1] ?? '', $mode);
-} else {
-    echo loadOutcome($argv[1] ?? '') . "\n";
+function copyFixture(string $fixture): array
+{
+    $dir = sys_get_temp_dir() . '/memless-parity-' . bin2hex(random_bytes(6));
+    mkdir($dir, 0755, recursive: true);
+    $base = basename($fixture);
+    $dest = $dir . '/' . $base;
+    copy($fixture, $dest);
+
+    return [$dir, $dest, $base];
 }
+
+function writeReport(Instance $instance, string $sql, array $paths): string
+{
+    [$dir, $dest, $base] = $paths;
+    $line = runWrite($instance, $sql, $dest, $base);
+    $report = $line . "\nsha256:" . fileHash($dest) . "\nresidue:" . residueFlag($dir, $base) . "\n";
+    $instance->release();
+
+    return $report;
+}
+
+function writeOutcome(string $fixture, string $sql): string
+{
+    $paths = copyFixture($fixture);
+    $report = writeReport(Instance::load($paths[1]), $sql, $paths);
+    cleanupDir($paths[0]);
+
+    return $report;
+}
+
+function writeDiskOutcome(string $fixture, string $sql): string
+{
+    $paths = copyFixture($fixture);
+    $instance = Instance::load($paths[1]);
+    chmod($paths[0], 0555);
+    $report = writeReport($instance, $sql, $paths);
+    chmod($paths[0], 0755);
+    cleanupDir($paths[0]);
+
+    return $report;
+}
+
+function runWrite(Instance $instance, string $sql, string $dest, string $base): string
+{
+    try {
+        return 'accepted:' . $instance->execute($sql);
+    } catch (MemlessRefusal $refusal) {
+        return 'refused:' . str_replace($dest, $base, $refusal->getMessage());
+    } catch (\Throwable $fault) {
+        return 'fault:' . str_replace($dest, $base, $fault->getMessage());
+    }
+}
+
+function fileHash(string $dest): string
+{
+    return is_file($dest) ? hash_file('sha256', $dest) : '-';
+}
+
+function residueFlag(string $dir, string $base): string
+{
+    return glob($dir . '/.' . $base . '.memless-tmp') ? 'yes' : 'no';
+}
+
+function cleanupDir(string $dir): void
+{
+    array_map('unlink', array_filter(glob($dir . '/{,.}*', GLOB_BRACE) ?: [], 'is_file'));
+    if (is_dir($dir)) {
+        rmdir($dir);
+    }
+}
+
+function dispatch(string $path, ?string $sql, ?string $mode): string
+{
+    if ($mode === 'write') {
+        return writeOutcome($path, $sql ?? '');
+    }
+    if ($mode === 'write-disk') {
+        return writeDiskOutcome($path, $sql ?? '');
+    }
+    if ($sql !== null) {
+        return queryOutcome($path, $sql);
+    }
+
+    return loadOutcome($path) . "\n";
+}
+
+echo dispatch($argv[1] ?? '', $argv[2] ?? null, $argv[3] ?? null);
