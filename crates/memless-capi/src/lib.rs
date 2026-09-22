@@ -46,7 +46,7 @@ pub use ffi::{guard, own_message};
 pub use kind::MemlessKind;
 pub use status::{MemlessHandle, MemlessResult, MemlessStatus};
 
-const ABI_VERSION: u32 = 3;
+const ABI_VERSION: u32 = 4;
 
 #[no_mangle]
 pub extern "C" fn memless_abi_version() -> u32 {

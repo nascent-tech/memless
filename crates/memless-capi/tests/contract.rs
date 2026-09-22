@@ -55,8 +55,100 @@ fn run_execute(handle: u64, sql: &str) -> (MemlessStatus, u64) {
 }
 
 #[test]
-fn reports_abi_version_three() {
-    assert_eq!(memless_abi_version(), 3);
+fn reports_abi_version_four() {
+    assert_eq!(memless_abi_version(), 4);
+}
+
+fn name_of(handle: u64, id: &str) -> String {
+    let (status, result) = run_query(handle, &format!("SELECT name FROM users WHERE id = '{id}'"));
+    assert_eq!(status, MemlessStatus::Ok);
+    let mut text: *const c_char = ptr::null();
+    unsafe { memless_result_cell(result, 0, 0, ptr::null_mut(), ptr::null_mut(), ptr::null_mut(), &mut text) };
+    let value = unsafe { CStr::from_ptr(text) }.to_str().expect("utf-8").to_string();
+    memless_result_release(result);
+    value
+}
+
+fn execute_message(handle: u64, sql: &str) -> (MemlessStatus, String) {
+    let csql = CString::new(sql).expect("c string");
+    let mut affected: u64 = 0;
+    let mut message: *mut c_char = ptr::null_mut();
+    let status = unsafe { memless_execute(handle, csql.as_ptr(), &mut affected, &mut message) };
+    let text = take_message(message);
+    (status, text)
+}
+
+fn take_message(message: *mut c_char) -> String {
+    if message.is_null() {
+        return String::new();
+    }
+    let value = unsafe { CStr::from_ptr(message) }.to_str().expect("utf-8").to_string();
+    unsafe { memless_free_string(message) };
+    value
+}
+
+#[test]
+fn a_transaction_reads_its_own_writes_and_commits_once_to_disk() {
+    let (handle, dir) = load_copy("start.yaml");
+    let file = dir.join("start.yaml");
+    let before = std::fs::read_to_string(&file).expect("read");
+    assert_eq!(run_execute(handle, "BEGIN"), (MemlessStatus::Ok, 0));
+    assert_eq!(run_execute(handle, "UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'"), (MemlessStatus::Ok, 1));
+    assert_eq!(name_of(handle, "01H7B2"), "Zoe");
+    assert_eq!(std::fs::read_to_string(&file).expect("read"), before);
+    assert_eq!(run_execute(handle, "COMMIT"), (MemlessStatus::Ok, 0));
+    let after = std::fs::read_to_string(&file).expect("read");
+    assert_ne!(after, before);
+    assert!(after.contains("Zoe"));
+    memless_release(handle);
+}
+
+#[test]
+fn a_rollback_leaves_the_file_untouched_and_restores_the_state() {
+    let (handle, dir) = load_copy("start.yaml");
+    let file = dir.join("start.yaml");
+    let before = std::fs::read_to_string(&file).expect("read");
+    assert_eq!(run_execute(handle, "BEGIN"), (MemlessStatus::Ok, 0));
+    assert_eq!(run_execute(handle, "UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'"), (MemlessStatus::Ok, 1));
+    assert_eq!(run_execute(handle, "ROLLBACK"), (MemlessStatus::Ok, 0));
+    assert_eq!(std::fs::read_to_string(&file).expect("read"), before);
+    assert_eq!(name_of(handle, "01H7B2"), "Ada");
+    memless_release(handle);
+}
+
+#[test]
+fn a_second_begin_is_refused_naming_the_rule() {
+    let (handle, _dir) = load_copy("start.yaml");
+    assert_eq!(run_execute(handle, "BEGIN"), (MemlessStatus::Ok, 0));
+    assert_eq!(execute_message(handle, "BEGIN"), (MemlessStatus::Refused, "a transaction is already open".to_string()));
+    memless_release(handle);
+}
+
+#[test]
+fn a_commit_without_a_transaction_is_refused_naming_the_rule() {
+    let (handle, _dir) = load_copy("start.yaml");
+    assert_eq!(execute_message(handle, "COMMIT"), (MemlessStatus::Refused, "no open transaction".to_string()));
+    memless_release(handle);
+}
+
+#[test]
+fn a_rollback_without_a_transaction_is_refused_naming_the_rule() {
+    let (handle, _dir) = load_copy("start.yaml");
+    assert_eq!(execute_message(handle, "ROLLBACK"), (MemlessStatus::Refused, "no open transaction".to_string()));
+    memless_release(handle);
+}
+
+#[test]
+fn a_failed_validation_is_refused_and_closes_the_transaction() {
+    let (handle, dir) = load_copy("start.yaml");
+    let file = dir.join("start.yaml");
+    let before = std::fs::read_to_string(&file).expect("read");
+    assert_eq!(run_execute(handle, "BEGIN"), (MemlessStatus::Ok, 0));
+    assert_eq!(run_execute(handle, "INSERT INTO users (id, name) VALUES ('01H7B2', 'Dup')"), (MemlessStatus::Ok, 1));
+    assert_eq!(run_execute(handle, "COMMIT").0, MemlessStatus::Refused);
+    assert_eq!(std::fs::read_to_string(&file).expect("read"), before);
+    assert_eq!(run_execute(handle, "BEGIN"), (MemlessStatus::Ok, 0));
+    memless_release(handle);
 }
 
 #[test]
