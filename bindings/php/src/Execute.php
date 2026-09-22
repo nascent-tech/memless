@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Memless;
 
 /**
- * Runs one SQL write against an instance handle: calls memless_execute, then
- * returns the affected row count on Ok, throws the refusal message on Refused
- * (a validation or disk failure), a fault otherwise.
+ * Runs one SQL write or transaction verb against an instance handle: calls
+ * memless_execute, then returns the affected row count on Ok (0 for a verb),
+ * throws the refusal message on Refused (a validation, disk or transaction-guard
+ * failure), a fault otherwise.
  */
 final class Execute
 {
