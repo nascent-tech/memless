@@ -1,9 +1,7 @@
-use apply::apply;
-use crate::query::Write;
-use crate::refusal::Refusal;
 pub use applied::Applied;
 
 mod apply;
+mod apply_write;
 mod applied;
 mod assign;
 mod assign_one;
@@ -28,13 +26,6 @@ mod targets;
 mod unique_columns;
 mod update;
 mod update_one;
+mod verified;
 mod where_column;
 mod where_qualifier;
-
-impl super::Base {
-    pub fn write(&self, statement: &Write) -> Result<Applied, Refusal> {
-        let (tables, affected) = apply(&self.tables, statement)?;
-        super::verify::verify(&tables)?;
-        Ok(Applied { base: super::Base { tables }, affected })
-    }
-}

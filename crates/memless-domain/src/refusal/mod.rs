@@ -6,6 +6,7 @@ mod row_label;
 mod source;
 mod structure;
 mod text_position;
+mod transaction;
 mod write;
 
 pub use query::QueryRefusal;
@@ -13,6 +14,7 @@ pub use row_label::RowLabel;
 pub use source::SourceRefusal;
 pub use structure::StructureRefusal;
 pub use text_position::TextPosition;
+pub use transaction::TransactionRefusal;
 pub use write::WriteRefusal;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,6 +23,7 @@ pub enum Refusal {
     Structure(StructureRefusal),
     Query(QueryRefusal),
     Write(WriteRefusal),
+    Transaction(TransactionRefusal),
 }
 
 impl fmt::Display for Refusal {
@@ -30,6 +33,7 @@ impl fmt::Display for Refusal {
             Refusal::Structure(refusal) => write!(formatter, "{refusal}"),
             Refusal::Query(refusal) => write!(formatter, "{refusal}"),
             Refusal::Write(refusal) => write!(formatter, "{refusal}"),
+            Refusal::Transaction(refusal) => write!(formatter, "{refusal}"),
         }
     }
 }
