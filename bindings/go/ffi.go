@@ -14,6 +14,16 @@ var (
 	memlessLoad       func(path string, outHandle *uint64, outMessage **byte) int32
 	memlessRelease    func(handle uint64)
 	memlessFreeString func(message *byte)
+
+	memlessQuery             func(handle uint64, sql string, outResult *uint64, outMessage **byte) int32
+	memlessResultColumnCount func(result uint64) uint64
+	memlessResultRowCount    func(result uint64) uint64
+	memlessResultColumn      func(result uint64, index uint64) string
+	memlessResultCell        func(
+		result, row, column uint64,
+		outInteger *int64, outDecimal *float64, outBoolean *int32, outText **byte,
+	) int32
+	memlessResultRelease func(result uint64)
 )
 
 func ensureLoaded() error {
@@ -47,10 +57,24 @@ func recovered(panicked any, err error) error {
 }
 
 func registerFunctions(handle uintptr) {
+	registerCore(handle)
+	registerResult(handle)
+}
+
+func registerCore(handle uintptr) {
 	purego.RegisterLibFunc(&memlessAbiVersion, handle, "memless_abi_version")
 	purego.RegisterLibFunc(&memlessLoad, handle, "memless_load")
 	purego.RegisterLibFunc(&memlessRelease, handle, "memless_release")
 	purego.RegisterLibFunc(&memlessFreeString, handle, "memless_free_string")
+	purego.RegisterLibFunc(&memlessQuery, handle, "memless_query")
+}
+
+func registerResult(handle uintptr) {
+	purego.RegisterLibFunc(&memlessResultColumnCount, handle, "memless_result_column_count")
+	purego.RegisterLibFunc(&memlessResultRowCount, handle, "memless_result_row_count")
+	purego.RegisterLibFunc(&memlessResultColumn, handle, "memless_result_column")
+	purego.RegisterLibFunc(&memlessResultCell, handle, "memless_result_cell")
+	purego.RegisterLibFunc(&memlessResultRelease, handle, "memless_result_release")
 }
 
 func checkAbi() error {

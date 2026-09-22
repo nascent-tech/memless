@@ -1,0 +1,10 @@
+things:
+  - id: 1
+    ratio: 1.5
+    third: 0.3333333333333333
+    active: true
+    label: hi
+  - id: 2
+    ratio: 2.5
+    third: 0.3333333333333333
+    active: false

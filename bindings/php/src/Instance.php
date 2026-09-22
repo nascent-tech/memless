@@ -5,15 +5,11 @@ declare(strict_types=1);
 namespace Memless;
 
 /**
- * A live memless instance behind an opaque handle. Translates the C ABI status
- * into a return value or a thrown error, and releases the handle once.
+ * A live memless instance behind an opaque handle. Loading, querying and the
+ * release call live in Loader, Query and Native; this facade holds the handle.
  */
 final class Instance
 {
-    private const STATUS_OK = 0;
-
-    private const STATUS_REFUSED = 1;
-
     private int $handle;
 
     private bool $released = false;
@@ -25,20 +21,17 @@ final class Instance
 
     public static function load(string $path): self
     {
-        if (strpos($path, "\0") !== false) {
-            throw new \InvalidArgumentException('path contains a NUL byte');
-        }
+        return new self(Loader::open($path));
+    }
 
-        [$status, $handle, $message] = Call::load(Library::ffi(), $path);
-        if ($status === self::STATUS_OK) {
-            return new self($handle);
-        }
+    public function query(string $sql): array
+    {
+        return Query::run($this->handle, $sql);
+    }
 
-        if ($status === self::STATUS_REFUSED) {
-            throw new MemlessRefusal($message);
-        }
-
-        throw new \LogicException("memless load fault ({$status}): {$message}");
+    public function __destruct()
+    {
+        $this->release();
     }
 
     public function release(): void
@@ -48,11 +41,6 @@ final class Instance
         }
 
         $this->released = true;
-        Library::ffi()->memless_release($this->handle);
-    }
-
-    public function __destruct()
-    {
-        $this->release();
+        Native::release($this->handle);
     }
 }
