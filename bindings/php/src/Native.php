@@ -6,7 +6,7 @@ namespace Memless;
 
 /**
  * Releases an instance handle through the shared FFI, so Instance stays a thin
- * facade over Loader, Query and this call.
+ * facade over Loader, Query, Execute and this call.
  */
 final class Native
 {

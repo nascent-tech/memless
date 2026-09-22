@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Memless;
 
 /**
- * A live memless instance behind an opaque handle. Loading, querying and the
- * release call live in Loader, Query and Native; this facade holds the handle.
+ * A live memless instance behind an opaque handle. Loading, querying, executing
+ * a write and the release call live in Loader, Query, Execute and Native; this
+ * facade holds the handle.
  */
 final class Instance
 {
@@ -27,6 +28,11 @@ final class Instance
     public function query(string $sql): array
     {
         return Query::run($this->handle, $sql);
+    }
+
+    public function execute(string $sql): int
+    {
+        return Execute::run($this->handle, $sql);
     }
 
     public function __destruct()

@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Memless;
+
+/**
+ * Runs one SQL write against an instance handle: calls memless_execute, then
+ * returns the affected row count on Ok, throws the refusal message on Refused
+ * (a validation or disk failure), a fault otherwise.
+ */
+final class Execute
+{
+    private const STATUS_OK = 0;
+
+    private const STATUS_REFUSED = 1;
+
+    public static function run(int $handle, string $sql): int
+    {
+        if (strpos($sql, "\0") !== false) {
+            throw new \InvalidArgumentException('sql contains a NUL byte');
+        }
+
+        $ffi = Library::ffi();
+        [$status, $affected, $message] = self::call($ffi, $handle, $sql);
+
+        return self::outcome($status, $affected, $message);
+    }
+
+    private static function call(\FFI $ffi, int $handle, string $sql): array
+    {
+        $outAffected = $ffi->new('uint64_t');
+        $outMessage = $ffi->new('char*');
+        $status = $ffi->memless_execute($handle, $sql, \FFI::addr($outAffected), \FFI::addr($outMessage));
+
+        return [$status, (int) $outAffected->cdata, Message::take($ffi, $outMessage)];
+    }
+
+    private static function outcome(int $status, int $affected, string $message): int
+    {
+        if ($status === self::STATUS_OK) {
+            return $affected;
+        }
+
+        if ($status === self::STATUS_REFUSED) {
+            throw new MemlessRefusal($message);
+        }
+
+        throw new \LogicException("memless execute fault ({$status}): {$message}");
+    }
+}
