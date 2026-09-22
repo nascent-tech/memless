@@ -16,6 +16,7 @@ mod relations;
 mod row;
 mod row_id;
 mod row_relations;
+mod select;
 mod table;
 mod table_relations;
 mod table_uniqueness;
@@ -28,7 +29,6 @@ use table::Table;
 use uniqueness::check_uniqueness;
 
 pub struct Base {
-    #[allow(dead_code)]
     tables: Vec<Table>,
 }
 

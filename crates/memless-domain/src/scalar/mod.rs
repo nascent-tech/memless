@@ -6,6 +6,7 @@ mod decimal;
 mod decimal_display;
 mod integer;
 mod keyword;
+pub(crate) mod scalar_order;
 
 use decimal::guess_decimal;
 use decimal_display::render_decimal;
