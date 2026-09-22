@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use common::{read_path, temp_file};
 use memless_domain::Scalar;
-use memless_engine::{load, parse, query, read, Base, Refusal};
+use memless_engine::{load, parse, query, read, Instance, Refusal};
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -12,7 +12,7 @@ fn unique(prefix: &str) -> String {
     format!("{prefix}-{}.yaml", COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
-fn shop() -> Base {
+fn shop() -> Instance {
     let yaml = "\
 users:
   - id: 1
@@ -28,10 +28,10 @@ wallets:
     balance: 50
 ";
     let path = temp_file(&unique("query-shop"), yaml);
-    load(read, &read_path(&path)).unwrap().base
+    load(read, &read_path(&path)).unwrap()
 }
 
-fn trap() -> Base {
+fn trap() -> Instance {
     let yaml = "\
 users:
   - id: 5
@@ -41,7 +41,7 @@ wallets:
     user_id: 5
 ";
     let path = temp_file(&unique("query-trap"), yaml);
-    load(read, &read_path(&path)).unwrap().base
+    load(read, &read_path(&path)).unwrap()
 }
 
 #[test]

@@ -6,6 +6,8 @@ pub(crate) fn statement_label(statement: &Statement) -> &'static str {
         Statement::Update { .. } => "UPDATE",
         Statement::Delete(_) => "DELETE",
         Statement::CreateTable(_) => "CREATE TABLE",
+        Statement::Savepoint { .. } => "SAVEPOINT",
+        Statement::ReleaseSavepoint { .. } => "RELEASE",
         _ => "this statement",
     }
 }

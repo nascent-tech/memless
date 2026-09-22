@@ -119,6 +119,40 @@ fn invalid(sql: &str) -> String {
 }
 
 #[test]
+fn lowers_the_bare_transaction_verbs() {
+    assert_eq!(parse("BEGIN").unwrap(), Statement::Begin);
+    assert_eq!(parse("START TRANSACTION").unwrap(), Statement::Begin);
+    assert_eq!(parse("COMMIT").unwrap(), Statement::Commit);
+    assert_eq!(parse("ROLLBACK").unwrap(), Statement::Rollback);
+}
+
+#[test]
+fn lowers_the_transaction_verbs_with_a_noise_word() {
+    assert_eq!(parse("BEGIN WORK").unwrap(), Statement::Begin);
+    assert_eq!(parse("COMMIT WORK").unwrap(), Statement::Commit);
+    assert_eq!(parse("ROLLBACK TRANSACTION").unwrap(), Statement::Rollback);
+}
+
+#[test]
+fn refuses_transaction_options_as_out_of_subset() {
+    assert_eq!(construct("BEGIN ISOLATION LEVEL SERIALIZABLE"), "transaction options");
+    assert_eq!(construct("COMMIT AND CHAIN"), "transaction options");
+    assert_eq!(construct("END"), "transaction options");
+    assert_eq!(construct("ROLLBACK TO s"), "transaction options");
+}
+
+#[test]
+fn refuses_a_savepoint_and_release_as_out_of_subset() {
+    assert_eq!(construct("SAVEPOINT s"), "SAVEPOINT");
+    assert_eq!(construct("RELEASE SAVEPOINT s"), "RELEASE");
+}
+
+#[test]
+fn refuses_a_begin_modifier_as_invalid_sql() {
+    assert!(!invalid("BEGIN DEFERRED").is_empty());
+}
+
+#[test]
 fn lowers_a_star_select() {
     let select = select("SELECT * FROM users");
     assert_eq!(select.from, "users");

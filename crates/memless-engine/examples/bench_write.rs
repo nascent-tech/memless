@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use memless_engine::{load, parse, read, replace_file, write, Instance};
+use memless_engine::{execute, load, parse, read, replace_file, Instance};
 
 const SIZES: [usize; 4] = [4, 100, 1000, 10000];
 const REPS: usize = 20;
@@ -44,7 +44,7 @@ fn time_load(_size: usize, text: &str) -> Duration {
 fn time_write(_size: usize, text: &str) -> Duration {
     let (dir, mut instance) = fresh(text);
     let start = Instant::now();
-    write(parse, replace_file, &mut instance, "UPDATE rows SET val = 'bench' WHERE id = 1").expect("write");
+    execute(parse, replace_file, &mut instance, "UPDATE rows SET val = 'bench' WHERE id = 1").expect("write");
     let elapsed = start.elapsed();
     drop(instance);
     let _ = std::fs::remove_dir_all(&dir);
@@ -63,7 +63,7 @@ fn time_suite(_size: usize, text: &str) -> Duration {
 
 fn apply(instance: &mut Instance, turn: usize) {
     let sql = format!("UPDATE rows SET val = 'b{turn}' WHERE id = 1");
-    write(parse, replace_file, instance, &sql).expect("suite write");
+    execute(parse, replace_file, instance, &sql).expect("suite write");
 }
 
 fn fresh(text: &str) -> (std::path::PathBuf, Instance) {
