@@ -13,6 +13,6 @@ pub use base::Applied;
 pub use base::Base;
 pub use id::Id;
 pub use query::{Delete, Insert, Statement, Update, Write};
-pub use refusal::{QueryRefusal, Refusal, WriteRefusal};
+pub use refusal::{QueryRefusal, Refusal, TransactionRefusal, WriteRefusal};
 pub use rows::Rows;
 pub use scalar::Scalar;

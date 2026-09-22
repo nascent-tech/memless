@@ -24,6 +24,7 @@ mod table_relations;
 mod table_uniqueness;
 mod uniqueness;
 mod verify;
+mod verify_state;
 mod write;
 
 use build::build_tables;
