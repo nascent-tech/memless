@@ -9,7 +9,7 @@ typedef int32_t MemlessStatus;
 /* 0 = Absent, 1 = Text, 2 = Integer, 3 = Decimal, 4 = Boolean */
 typedef int32_t MemlessKind;
 
-/* ABI version 3. */
+/* ABI version 4. */
 uint32_t memless_abi_version(void);
 
 /*
@@ -34,6 +34,10 @@ MemlessStatus memless_load(const char *path, MemlessHandle *out_handle, char **o
  * released. Borrowed pointers (see below) are NOT synchronised with a
  * concurrent memless_result_release of the same result; the caller must not
  * release a result while it still holds a pointer into it.
+ *
+ * While a transaction is open on the handle, the query sees the transaction's
+ * not-yet-committed writes (read-your-writes); otherwise it sees the committed
+ * state. A non-SELECT sql yields Refused and never touches the transaction.
  */
 MemlessStatus memless_query(MemlessHandle handle, const char *sql, MemlessResult *out_result, char **out_message);
 
@@ -49,6 +53,16 @@ MemlessStatus memless_query(MemlessHandle handle, const char *sql, MemlessResult
  * rewrites the file by substitution before the count is returned; a write that
  * changes nothing does not touch the disk. Like memless_query, an execute holds a
  * process-wide lock across the file rewrite (fsync + rename).
+ *
+ * BEGIN, COMMIT and ROLLBACK are also accepted (out_affected = 0). BEGIN opens a
+ * transaction; writes then apply to a working state the file does not yet reflect,
+ * and COMMIT rewrites the file once (fsync + rename) when the working state
+ * differs from the committed one, and does not touch the disk otherwise, while
+ * ROLLBACK discards the working state without touching the disk. A second BEGIN, or a COMMIT/ROLLBACK
+ * with no open transaction, yields Refused; a write refused inside a transaction
+ * leaves it open, while a COMMIT always closes it (a failed validation or disk
+ * write leaves memory and the file at the before-state). Releasing the handle
+ * mid-transaction discards the working state.
  */
 MemlessStatus memless_execute(MemlessHandle handle, const char *sql, uint64_t *out_affected, char **out_message);
 
