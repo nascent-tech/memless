@@ -9,5 +9,5 @@ pub type ReadSource = fn(&str) -> Result<RawDocument, SourceRefusal>;
 pub fn load(read: ReadSource, path: &str) -> Result<Instance, Refusal> {
     let document = read(path)?;
     let base = build(document)?;
-    Ok(Instance { path: path.to_string(), base })
+    Ok(Instance { path: path.to_string(), base, transaction: None })
 }

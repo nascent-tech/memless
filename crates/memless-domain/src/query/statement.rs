@@ -5,4 +5,7 @@ use super::write::Write;
 pub enum Statement {
     Select(Select),
     Write(Write),
+    Begin,
+    Commit,
+    Rollback,
 }

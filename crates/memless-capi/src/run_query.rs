@@ -6,7 +6,7 @@ use crate::prepare::prepare;
 use crate::results::store_result;
 
 pub(crate) fn run_query(handle: u64, sql: &str) -> Outcome {
-    match with_instance(handle, |instance| query(parse, &instance.base, sql)) {
+    match with_instance(handle, |instance| query(parse, instance, sql)) {
         Some(Ok(rows)) => Outcome::accepted(store_result(prepare(rows))),
         Some(Err(refusal)) => Outcome::refused(refusal.to_string()),
         None => Outcome::invalid("unknown handle"),
