@@ -355,3 +355,62 @@ fn refuses_sum_overflow() {
     };
     assert!(matches!(base.select(&query), Err(QueryRefusal::SumOverflow { .. })));
 }
+
+#[test]
+fn refuses_two_identical_output_columns() {
+    let query = Select {
+        items: Items::Columns(vec![col("id"), col("id")]),
+        from: "users".to_string(),
+        join: None,
+        filter: None,
+    };
+    let refusal = shop().select(&query).unwrap_err();
+    assert!(matches!(refusal, QueryRefusal::OutsideSubset { .. }));
+    assert_eq!(refusal.to_string(), "duplicate output column is outside the supported SQL subset");
+}
+
+#[test]
+fn refuses_a_dropped_qualifier_that_duplicates_a_header() {
+    let query = Select {
+        items: Items::Columns(vec![qual("users", "id"), col("id")]),
+        from: "users".to_string(),
+        join: None,
+        filter: None,
+    };
+    assert!(matches!(shop().select(&query), Err(QueryRefusal::OutsideSubset { .. })));
+}
+
+#[test]
+fn refuses_two_identical_aggregate_headers() {
+    let query = Select {
+        items: Items::Aggregates(vec![Aggregate::CountStar, Aggregate::CountStar]),
+        from: "users".to_string(),
+        join: None,
+        filter: None,
+    };
+    assert!(matches!(shop().select(&query), Err(QueryRefusal::OutsideSubset { .. })));
+}
+
+#[test]
+fn accepts_distinct_column_headers() {
+    let query = Select {
+        items: Items::Columns(vec![col("id"), col("role")]),
+        from: "users".to_string(),
+        join: None,
+        filter: None,
+    };
+    let result = shop().select(&query).unwrap();
+    assert_eq!(result.columns, vec!["id".to_string(), "role".to_string()]);
+}
+
+#[test]
+fn accepts_distinct_aggregate_headers() {
+    let query = Select {
+        items: Items::Aggregates(vec![Aggregate::CountStar, Aggregate::Sum(col("balance"))]),
+        from: "wallets".to_string(),
+        join: None,
+        filter: None,
+    };
+    let result = shop().select(&query).unwrap();
+    assert_eq!(result.columns, vec!["COUNT(*)".to_string(), "SUM(balance)".to_string()]);
+}

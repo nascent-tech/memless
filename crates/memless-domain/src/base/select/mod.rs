@@ -17,6 +17,7 @@ mod column_check;
 mod column_rows;
 mod combine;
 mod count_present;
+mod distinct_headers;
 mod dispatch_sum;
 mod eval;
 mod existing_columns;
@@ -71,6 +72,7 @@ mod to_decimal;
 mod to_integer;
 
 use combine::combine;
+use distinct_headers::distinct_headers;
 use keep::keep;
 use plan::plan;
 use project::project;
@@ -83,6 +85,8 @@ impl super::Base {
         let resolved = plan(&self.tables, query)?;
         let candidates = combine(&resolved);
         let kept = keep(&resolved, candidates, query);
-        project(&resolved, query, &kept)
+        let rows = project(&resolved, query, &kept)?;
+        distinct_headers(&rows)?;
+        Ok(rows)
     }
 }

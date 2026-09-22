@@ -92,11 +92,12 @@ final class InstanceTest extends TestCase
         $instance->release();
     }
 
-    public function testRefusesToDropADuplicateColumnName(): void
+    public function testRefusesADuplicateOutputColumnFromTheCore(): void
     {
         $instance = Instance::load($this->fixture('start.yaml'));
         try {
-            $this->expectException(\LogicException::class);
+            $this->expectException(MemlessRefusal::class);
+            $this->expectExceptionMessage('duplicate output column is outside the supported SQL subset');
             $instance->query('SELECT id, id FROM users');
         } finally {
             $instance->release();
