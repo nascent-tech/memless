@@ -24,10 +24,16 @@ func main() {
 }
 
 func writeDispatch(path string, sql string, mode string) string {
-	if mode == "write-disk" {
+	switch mode {
+	case "write-disk":
 		return writeDiskOutcome(path, sql)
+	case "transaction":
+		return transactionOutcome(path, sql)
+	case "transaction-disk":
+		return transactionDiskOutcome(path, sql)
+	default:
+		return writeOutcome(path, sql)
 	}
-	return writeOutcome(path, sql)
 }
 
 func argPath() string {

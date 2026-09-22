@@ -1,0 +1,28 @@
+# One transaction per line: <fixture><TAB><sql1>;;<sql2>;;... — the instructions
+# run in order on one instance. A "!disk" line is <!disk><TAB><fixture><TAB><suite>
+# and makes the atomic rewrite at COMMIT fail. A SELECT prints its rows (it sees
+# the working state); every other verb prints accepted:<n> | refused:<msg>. Both
+# bridges must print the same block, then sha256:<hex|-> and residue:<yes|no>.
+# start.yaml: users (id, name); wallets (id, user_id -> users, amount).
+# transfer: two writes, one rewrite at COMMIT
+start.yaml	BEGIN;;UPDATE wallets SET amount = 50 WHERE id = 'w_123';;UPDATE wallets SET amount = 300 WHERE id = 'w_124';;COMMIT
+# abandon: the working state is dropped, the file is left
+start.yaml	BEGIN;;UPDATE users SET name = 'Zoe' WHERE id = '01H7B2';;ROLLBACK
+# read-your-writes: the SELECT sees the not-yet-committed name
+start.yaml	BEGIN;;UPDATE users SET name = 'Zoe' WHERE id = '01H7B2';;SELECT name FROM users WHERE id = '01H7B2';;COMMIT
+# an invalid intermediate state is tolerated until COMMIT
+start.yaml	BEGIN;;DELETE FROM users WHERE id = '01H7B3';;DELETE FROM wallets WHERE id = 'w_123';;COMMIT
+# a refused instruction leaves the transaction open (the next write still applies)
+start.yaml	BEGIN;;UPDATE ghosts SET x = 1;;UPDATE users SET name = 'Zoe' WHERE id = '01H7B2';;COMMIT
+# a failed validation (a duplicate id) is refused at COMMIT; the trailing COMMIT
+# then reads "no open transaction", so the failed COMMIT closed the transaction
+start.yaml	BEGIN;;INSERT INTO users (id, name) VALUES ('01H7B2', 'Dup');;COMMIT;;COMMIT
+# a broken relation left by a DELETE is tolerated until it is refused at COMMIT
+start.yaml	BEGIN;;DELETE FROM users WHERE id = '01H7B3';;COMMIT;;COMMIT
+# guards: a second BEGIN, and a COMMIT or ROLLBACK with no open transaction
+start.yaml	BEGIN;;BEGIN
+start.yaml	COMMIT
+start.yaml	ROLLBACK
+# a disk failure at COMMIT closes the transaction (the trailing COMMIT reads "no
+# open transaction") and leaves the file untouched
+!disk	start.yaml	BEGIN;;UPDATE users SET name = 'Zoe' WHERE id = '01H7B2';;COMMIT;;COMMIT

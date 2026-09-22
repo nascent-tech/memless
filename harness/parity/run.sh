@@ -183,7 +183,9 @@ if [ -f "$writes" ]; then
 	done <"$writes"
 fi
 
+. "$here/transactions.sh"
+
 if [ "$diverged" -eq 0 ]; then
-	echo "parity: all fixtures, queries and writes agree on both bridges"
+	echo "parity: all fixtures, queries, writes and transactions agree on both bridges"
 fi
 exit "$diverged"
