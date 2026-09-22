@@ -9,7 +9,7 @@ statut: valide
 ---
 
 <!-- charpente-navigation -->
-**Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › [mvp — Prouver la promesse de Memless](../mvp/00-index.md) › **cadrage — Palier 4 — Transiger**  
+**Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › [mvp — Prouver la promesse de Memless](../mvp/00-index.md) › **cadrage — Palier 4 — Transiger** › [conception — Palier 4 — Transiger](../conceptions/2026-09-22-palier-4-transiger/00-index.md) › [plan — Palier 4 — Transiger](../plans/2026-09-22-palier-4-transiger/00-index.md)  
 **Maillage** : [maillage.md](../maillage.md)
 
 *Bloc généré — il se retisse à chaque écriture, ne l'édite pas à la main.*
