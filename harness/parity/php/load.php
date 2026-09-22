@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/transaction.php';
 
 use Memless\Instance;
 use Memless\MemlessRefusal;
@@ -175,13 +176,21 @@ function cleanupDir(string $dir): void
     }
 }
 
+function dispatchMode(string $path, string $sql, string $mode): string
+{
+    return match ($mode) {
+        'write' => writeOutcome($path, $sql),
+        'write-disk' => writeDiskOutcome($path, $sql),
+        'transaction' => transactionOutcome($path, $sql),
+        'transaction-disk' => transactionDiskOutcome($path, $sql),
+        default => '',
+    };
+}
+
 function dispatch(string $path, ?string $sql, ?string $mode): string
 {
-    if ($mode === 'write') {
-        return writeOutcome($path, $sql ?? '');
-    }
-    if ($mode === 'write-disk') {
-        return writeDiskOutcome($path, $sql ?? '');
+    if ($mode !== null) {
+        return dispatchMode($path, $sql ?? '', $mode);
     }
     if ($sql !== null) {
         return queryOutcome($path, $sql);

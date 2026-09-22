@@ -41,3 +41,40 @@ Le pari « la réécriture complète reste imperceptible » **tient** pour l'éc
 non par la taille. La réécriture O(n) n'est pas le facteur limitant à cette échelle. Une écriture en
 rafale paie un `fsync` par appel ; un regroupement (hors MVP) serait le levier si le débit devenait
 un objectif.
+
+# Banc de transaction — palier 4 « Transiger »
+
+Deuxième relevé, ajouté au palier 4. Mesure, pour un fichier d'une ligne, deux durées : une
+**transaction de k écritures validée** (`BEGIN`, k × `UPDATE`, `COMMIT` — **une seule** réécriture)
+et **k écritures isolées** (k réécritures). Percentiles **p50/p95** sur **20 répétitions**.
+Reproduire par `bash harness/bench/run.sh` (bâtit et lance aussi
+`crates/memless-engine/examples/bench_transaction.rs`) ; recopier les nombres ici à la main.
+
+## Relevé — 2026-09-22
+
+Machine : poste de développement macOS (Darwin 27), profil `release`. Durées en **microsecondes**.
+
+| k | transaction p50 | transaction p95 | k isolées p50 | k isolées p95 |
+|---|---|---|---|---|
+| 1 | 9 851 | 12 383 | 9 969 | 11 826 |
+| 10 | 10 204 | 12 360 | 103 834 | 108 368 |
+| 100 | 11 275 | 13 400 | 1 003 183 | 1 040 383 |
+| 1 000 | 15 360 | 18 140 | 9 882 698 | 10 356 298 |
+
+## Lecture
+
+- **La transaction paie un seul `fsync`, quel que soit k** : ~9,9 ms à k=1, ~15,4 ms à k=1 000. La
+  légère montée est le travail O(k) en mémoire (appliquer k écritures sur l'état de travail) plus
+  **une** réécrite finale — pas k réécritures.
+- **k écritures isolées paient k `fsync`** : la durée croît linéairement, de ~10 ms (k=1) à ~9,88 s
+  (k=1 000, soit ~9,9 ms par écriture, le plancher `fsync` du premier relevé).
+- **L'écart est le nombre de `fsync` économisés** : à k=1 égalité (une écriture = une transaction
+  d'une instruction) ; à k=10 ~**10×** ; à k=100 ~**89×** ; à k=1 000 ~**643×**.
+
+## Ce que ça informe (brief §4)
+
+Le regroupement annoncé au premier relevé comme « le levier si le débit devenait un objectif » est
+**mesuré** : une transaction transforme k `fsync` en un seul, sans changer la garantie de durabilité
+(la réécrite finale reste atomique par substitution). Le tout-ou-rien du palier 4 n'est donc pas
+qu'une sémantique — c'est aussi le seul chemin vers un débit d'écriture élevé sur ce moteur, où la
+durabilité, non la taille, domine le coût.
