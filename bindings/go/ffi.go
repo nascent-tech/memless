@@ -15,6 +15,7 @@ var (
 	memlessRelease    func(handle uint64)
 	memlessFreeString func(message *byte)
 
+	memlessExecute           func(handle uint64, sql string, outAffected *uint64, outMessage **byte) int32
 	memlessQuery             func(handle uint64, sql string, outResult *uint64, outMessage **byte) int32
 	memlessResultColumnCount func(result uint64) uint64
 	memlessResultRowCount    func(result uint64) uint64
@@ -66,6 +67,7 @@ func registerCore(handle uintptr) {
 	purego.RegisterLibFunc(&memlessLoad, handle, "memless_load")
 	purego.RegisterLibFunc(&memlessRelease, handle, "memless_release")
 	purego.RegisterLibFunc(&memlessFreeString, handle, "memless_free_string")
+	purego.RegisterLibFunc(&memlessExecute, handle, "memless_execute")
 	purego.RegisterLibFunc(&memlessQuery, handle, "memless_query")
 }
 
