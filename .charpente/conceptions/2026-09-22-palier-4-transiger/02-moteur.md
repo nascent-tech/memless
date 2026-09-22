@@ -82,7 +82,8 @@ pub fn execute(parse: ParseSql, replace: ReplaceFile, instance: &mut Instance, t
 
 - **`open.rs`** — si `instance.transaction.is_some()` → `TransactionRefusal::AlreadyOpen` (T1),
   l'ouverte intacte ; sinon `instance.transaction = Some(instance.base.clone())`. Rend `Ok(0)`.
-- **`apply_write.rs`** — **avec** transaction ouverte : `working.apply_write(&w)?` (apply seul, W1–W7
+- **`apply_write.rs`** — **remplace** l'`apply.rs` du palier 3 (la fn libre `apply` enveloppant
+  `base.write` disparaît ; il n'y a **pas** deux `apply*.rs` côte à côte). **Avec** transaction ouverte : `working.apply_write(&w)?` (apply seul, W1–W7
   ici, laisse la transaction ouverte à l'échec), `instance.transaction = Some(applied.base)`, rend
   `affected`. **Sans** transaction : appelle **le corps de `application::write` du palier 3 déplacé
   tel quel** (`apply_write` → `verify_state` → **si l'état final égale `instance.base`, retour sans

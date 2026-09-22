@@ -86,7 +86,7 @@ fichier est la vérité » tiennent identiquement à travers les ponts — le de
 | # | Non-choix | Pourquoi |
 |---|---|---|
 | N-1 | **Pas de journal d'annulation** (undo log / opérations inverses). | La copie est plus simple et sûre ; l'abandon est un `drop`, pas un rejeu inverse. |
-| N-2 | **Pas de réécriture par écriture dans une transaction.** | Le tout-ou-rien exige **une** réécriture à la validation (§8.6) ; réécrire à chaque `stage` laisserait un état intermédiaire sur le disque. |
+| N-2 | **Pas de réécriture par écriture dans une transaction.** | Le tout-ou-rien exige **une** réécriture à la validation (§8.6) ; réécrire à chaque écriture laisserait un état intermédiaire sur le disque. |
 | N-3 | **Pas de fonctions ABI `memless_begin`/…** ni de niveau d'isolation. | Décision 8 (un texte SQL) ; décision 29 (une seule transaction, pas de `SAVEPOINT`). |
 | N-4 | **Pas de coordination inter-fils de l'état de travail.** | Décision 7 : sérialiser est à l'appelant ; le moteur ne garantit que la sûreté mémoire. |
 

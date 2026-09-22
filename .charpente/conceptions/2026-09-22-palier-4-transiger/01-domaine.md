@@ -45,13 +45,13 @@ interne, la méthode `apply_write` le délègue).
   .verify_state()?; Ok(applied)` — comportement **inchangé** pour l'écriture isolée.
 
 **Ne fait pas** : ne connaît ni transaction, ni état de travail, ni `Instance` (application) ; ne
-lit ni n'écrit aucun fichier. `stage` ne décide pas de réécrire.
+lit ni n'écrit aucun fichier. `apply_write` ne décide pas de réécrire.
 
 **Les variantes `Statement::Begin`/`Commit`/`Rollback` ne sont PAS ajoutées ici.** Ajouter une
 variante à l'enum `Statement` rendrait non exhaustifs les `match` de `memless-engine` (palier 3 :
 `application::query`/`write`) — l'exhaustivité couple la variante à ses consommateurs. Les trois
 variantes **et** leur traitement atterrissent donc **ensemble en PR2** (conception §02), pour que le
-workspace reste vert. PR1 se limite aux ajouts **sans couplage d'exhaustivité** : `stage`,
+workspace reste vert. PR1 se limite aux ajouts **sans couplage d'exhaustivité** : `apply_write`,
 `verify_state`, `TransactionRefusal`, `Refusal::Transaction` (la branche `Display` de `Refusal` est
 mise à jour dans la même PR — c'est le seul `match` exhaustif sur `Refusal`, et il vit au domaine).
 
@@ -93,5 +93,5 @@ ne connaît pas l'état ouvert/fermé (le domaine est sans état).
   `verify_state` sur un état à `id` en doublon → `DuplicateId` ; sur un orphelin → `BrokenRelation` ;
   sur un état sain → Ok.
 - `tests/transaction_refusal.rs` — les gabarits `AlreadyOpen`/`NoOpenTransaction` (messages exacts).
-- La batterie du palier 3 (`tests/write.rs`) reste **verte** : `write` = `stage` + `verify_state` ne
+- La batterie du palier 3 (`tests/write.rs`) reste **verte** : `write` = `apply_write` + `verify_state` ne
   change aucun comportement de l'écriture isolée.

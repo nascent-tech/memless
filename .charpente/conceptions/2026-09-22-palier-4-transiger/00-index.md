@@ -44,10 +44,10 @@ substitution) ou **abandonner**, avec toutes les issues (instruction refusée �
 ## Les parties
 
 - [01 — Domaine : scission apply/verify, refus de transaction (`memless-domain`)](01-domaine.md) —
-  `Base::stage` (apply sans verify), `Base::verify_state` (structure d'ensemble), `TransactionRefusal`.
+  `Base::apply_write` (apply sans verify), `Base::verify_state` (structure d'ensemble), `TransactionRefusal`.
   Porte **PR1**.
 - [02 — État de travail et cas d'usage (`memless-engine`)](02-moteur.md) — `Statement::Begin/Commit/
-  Rollback`, `Instance` gagne l'état de travail, `application::{open,stage,validate,abandon}`, la
+  Rollback`, `Instance` gagne l'état de travail, `application::{open,apply_write,validate,abandon}`, la
   lecture de ses propres écritures. Porte **PR2**.
 - [03 — Surface C ABI](03-capi.md) — `memless_execute` reconnaît les verbes, `memless_query` consulte
   l'état de travail, `ABI_VERSION = 4`. Porte **PR3**.
