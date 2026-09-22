@@ -6,8 +6,8 @@ namespace Memless;
 
 /**
  * A live memless instance behind an opaque handle. Loading, querying, executing
- * a write and the release call live in Loader, Query, Execute and Native; this
- * facade holds the handle.
+ * a write or a transaction verb and the release call live in Loader, Query,
+ * Execute and Native; this facade holds the handle.
  */
 final class Instance
 {
@@ -33,6 +33,21 @@ final class Instance
     public function execute(string $sql): int
     {
         return Execute::run($this->handle, $sql);
+    }
+
+    public function begin(): void
+    {
+        Execute::run($this->handle, 'BEGIN');
+    }
+
+    public function commit(): void
+    {
+        Execute::run($this->handle, 'COMMIT');
+    }
+
+    public function rollback(): void
+    {
+        Execute::run($this->handle, 'ROLLBACK');
     }
 
     public function __destruct()
