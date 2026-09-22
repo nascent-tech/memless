@@ -1,0 +1,22 @@
+# One write per line: <fixture><TAB><sql>. A "!disk" line is <!disk><TAB><fixture><TAB><sql>
+# and forces the atomic rewrite to fail. Both bridges must print the same three
+# lines: accepted:<n> | refused:<msg> , then sha256:<hex|-> , then residue:<yes|no>.
+# start.yaml: users (text id + name), wallets (text id + text user_id + int amount).
+start.yaml	INSERT INTO users (id, name) VALUES ('u3', 'Zoe')
+start.yaml	INSERT INTO logs (id, line) VALUES ('l1', 'hi')
+start.yaml	INSERT INTO users (id, name, role) VALUES ('u4', 'Max', 'admin')
+start.yaml	UPDATE users SET name = 'Xanthe' WHERE id = '01H7B2'
+start.yaml	UPDATE wallets SET amount = NULL WHERE id = 'w_123'
+start.yaml	UPDATE wallets SET id = 'w_999' WHERE id = 'w_123'
+start.yaml	DELETE FROM wallets WHERE id = 'w_123'
+start.yaml	DELETE FROM wallets
+start.yaml	UPDATE users SET name = 'Ada' WHERE id = '01H7B2'
+start.yaml	UPDATE users SET name = 'None' WHERE id = 'absent-id'
+start.yaml	UPDATE users SET id = 'u9' WHERE id = '01H7B3'
+start.yaml	INSERT INTO users (id) VALUES ('u5', 'extra')
+start.yaml	INSERT INTO users (id, id) VALUES ('u6', 'u7')
+start.yaml	INSERT INTO users (name) VALUES ('NoId')
+start.yaml	UPDATE users SET id = 1.5 WHERE id = '01H7B2'
+start.yaml	INSERT INTO users (id, name) VALUES ('01H7B2', 'Dup')
+start.yaml	DELETE FROM users WHERE id = '01H7B3'
+!disk	start.yaml	UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'

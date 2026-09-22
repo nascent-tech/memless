@@ -12,11 +12,22 @@ import (
 )
 
 func main() {
+	if len(os.Args) >= 4 {
+		fmt.Print(writeDispatch(os.Args[1], os.Args[2], os.Args[3]))
+		return
+	}
 	if len(os.Args) > 2 {
 		fmt.Print(queryOutcome(os.Args[1], os.Args[2]))
 		return
 	}
 	fmt.Println(loadOutcome(argPath()))
+}
+
+func writeDispatch(path string, sql string, mode string) string {
+	if mode == "write-disk" {
+		return writeDiskOutcome(path, sql)
+	}
+	return writeOutcome(path, sql)
 }
 
 func argPath() string {
