@@ -31,3 +31,7 @@ start.yaml	SELECT * FROM wallets JOIN users ON wallets.user_id = users.id
 start.yaml	SELECT * FROM users ORDER BY id
 kinds.yaml	SELECT third FROM things
 kinds.yaml	SELECT SUM(third) FROM things
+# A projection with duplicate output headers is refused by the core (Q2), so both
+# bridges see the same refusal instead of PHP raising and Go keeping the double.
+start.yaml	SELECT id, id FROM users
+start.yaml	SELECT COUNT(*), COUNT(*) FROM users
