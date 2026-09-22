@@ -3,7 +3,7 @@ package memless
 import "strings"
 
 const (
-	abiVersion            uint32 = 3
+	abiVersion            uint32 = 4
 	statusOk              int32  = 0
 	statusRefused         int32  = 1
 	statusInvalidArgument int32  = 2
