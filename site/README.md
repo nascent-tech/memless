@@ -2,13 +2,13 @@
 
 The source of the Memless documentation, built with
 [Starlight](https://starlight.astro.build) and published to
-<https://nascent-tech.github.io/memless/> on every push to `main` that
+<https://memless.nascent-tech.co> on every push to `main` that
 touches `site/`.
 
 ```sh
 cd site
 npm ci
-npm run dev     # http://localhost:4321/memless/
+npm run dev     # http://localhost:4321/
 npm run build   # writes dist/
 ```
 

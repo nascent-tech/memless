@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Ajouté
 
-- A documentation site, <https://nascent-tech.github.io/memless/>, with every code sample shown in
+- A documentation site, <https://memless.nascent-tech.co>, with every code sample shown in
   Node.js, PHP and Go: pick your language once and every page follows. No code changes.
 
 ## [0.4.1] — 2026-09-26

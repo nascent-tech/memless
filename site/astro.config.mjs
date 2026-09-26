@@ -3,8 +3,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
-	site: 'https://nascent-tech.github.io',
-	base: '/memless',
+	site: 'https://memless.nascent-tech.co',
 	integrations: [
 		starlight({
 			title: 'Memless',
