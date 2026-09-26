@@ -3,8 +3,8 @@ type: cadrage
 titre: Palier 6 — Publier sur les registres
 slug: palier-6-publier
 cree_le: 2026-09-26T12:11:30+0000
-mis_a_jour_le: 2026-09-26T16:36:45+0000
-branche: fix/unknown-libc
+mis_a_jour_le: 2026-09-26T16:40:06+0000
+branche: docs/node-mirror
 statut: valide
 ---
 
@@ -254,3 +254,38 @@ que `gcompat` pose un chargeur glibc sur Alpine). Une libc que rien ne tranche e
 embarquée : repli `target/`, puis l'erreur de R2. Une image glibc sans `ldd`, comme distroless,
 garde sa bibliothèque embarquée grâce au chargeur. Correctif sans rupture, dans la section « Non
 publié » du CHANGELOG.
+
+## Révision du 2026-09-26 — miroir Node et contributions externes
+
+**Pourquoi.** Décision du propriétaire : aligner les trois ponts sur un même patron de publication et
+ouvrir le projet aux contributions externes. Le pont Node était le seul sans miroir : son code publié
+n'était visible que dans `bindings/node` du dépôt principal, au milieu du cœur et des deux autres
+ponts. Et les miroirs PHP et Go se présentaient comme « en lecture seule », sans dire où contribuer.
+
+**Décision — miroir Node.** Un dépôt public **`nascent-tech/memless-node`** reçoit, à chaque tag, le
+contenu exact du paquet npm publié (`package.json`, `README.md`, `LICENSE`, `src/`, `lib/<plateforme>/`,
+`lib/SHA256SUMS`), sur le patron des miroirs PHP et Go : commit orphelin par version, tag `vX.Y.Z`,
+`main` du miroir poussé en force, clé de déploiement SSH en écriture limitée à ce seul dépôt (secret
+`NODE_MIRROR_DEPLOY_KEY`), job sauté sans échec tant que la variable `NODE_MIRROR_PUBLISH` n'est pas
+posée. La publication npm, elle, ne change pas : elle part toujours du paquet construit dans le dépôt
+principal, dont le `repository` reste `nascent-tech/memless`, parce que la provenance npm et
+l'éditeur de confiance rattachent le paquet au dépôt dont le workflow publie. Le miroir ne sert qu'à
+montrer, à chaque version, ce qui est installé.
+
+**Décision — contributions.** Les trois miroirs sont publics, sous licence MIT, mais écrits par la
+seule CI : un commit poussé à la main y serait effacé à la version suivante. Les contributions —
+issues, pull requests, questions — vont au **dépôt principal**, où vivent le cœur, les trois ponts et
+le banc de parité : un changement de comportement d'un pont doit atterrir dans les trois et passer
+le banc, ce qu'aucun miroir ne peut vérifier. Chaque miroir le dit par sa description et par son
+README, qui est le README du pont ; les issues y restent fermées, et une pull request ouverte sur un
+miroir est redirigée vers le dépôt principal. Le dépôt principal porte ce qu'un contributeur attend
+d'un projet ouvert : un guide de contribution, un code de conduite, une politique de sécurité (avec
+signalement privé des vulnérabilités), des modèles d'issue et de pull request.
+
+**Rupture et version.** Aucune : ni l'API ni les paquets ne changent. Le miroir Node reçoit sa
+première version avec la prochaine publication (0.4.0).
+
+**Fait par le propriétaire le 2026-09-26.** Miroir `nascent-tech/memless-node` créé, public, issues
+fermées ; clé de déploiement SSH en écriture limitée à ce dépôt ; secret **`NODE_MIRROR_DEPLOY_KEY`**
+et variable **`NODE_MIRROR_PUBLISH=true`** posés. Le premier tag qui suit la fusion du job pousse donc
+le miroir ; sans la variable, le job serait sauté sans faire échouer la CI, à l'identique de R6.

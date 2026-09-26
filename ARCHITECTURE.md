@@ -7,7 +7,7 @@
 *Bloc généré — il se retisse à chaque écriture, ne l'édite pas à la main.*
 <!-- /charpente-navigation -->
 
-> **Statut : constaté sur le code.** **Les paliers 1 à 6 sont livrés (0.3.0 ; la révision « paquet npm unique » part en 0.4.0)** ; toute divergence entre
+> **Statut : constaté sur le code.** **Les paliers 1 à 6 sont livrés (0.3.0 ; les révisions « paquet npm unique » et « miroir Node » partent en 0.4.0)** ; toute divergence entre
 > ce document et le code est un défaut du document, à corriger dans le document. **Convention de renvoi :** « §X du brief » / « décision N du brief »
 > pointent vers le brief ; un « §X » nu, vers ce document.
 
@@ -34,9 +34,11 @@ confiée à `sqlparser` (0.54), l'exécution est écrite dans le domaine ; chaqu
 par la voie la plus directe qu'il offre (`koffi`, FFI dynamique, pour Node, `FFI` intégré pour PHP,
 `purego` pour Go). Memless est **gratuit et ouvert** sous licence MIT (décision 1 du brief) ; il est
 publié sur GitHub (`nascent-tech/memless`), et, depuis le palier 6, sur les registres natifs de chaque
-langage — **npm**, **Packagist** (par un dépôt miroir), **le proxy Go** (module `github.com/nascent-tech/memless-go`,
+langage — **npm** (contenu montré dans un dépôt miroir `nascent-tech/memless-node`), **Packagist** (par un dépôt miroir), **le proxy Go** (module `github.com/nascent-tech/memless-go`,
 publié par un dépôt miroir `nascent-tech/memless-go`) — en plus de GitHub Releases, pour que chaque pont
-s'installe par l'outil natif de son langage sans bibliothèque à télécharger à la main.
+s'installe par l'outil natif de son langage sans bibliothèque à télécharger à la main. Les
+contributions externes (issues, pull requests) sont reçues sur le dépôt principal, jamais sur les
+miroirs, que seule la CI écrit (`CONTRIBUTING.md`).
 
 ## §2. Structure du projet
 

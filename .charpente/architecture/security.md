@@ -105,6 +105,12 @@ identités de dépôt et des jetons, à traiter avec le même soin que le reste.
   est ce seul dépôt — jamais une clé ou un jeton à portée du dépôt principal. Le secret
   (`GO_MIRROR_DEPLOY_KEY`) n'est exposé qu'au step de poussée du job `publish-go`, qui n'a donc plus besoin de
   `contents: write` sur le dépôt principal.
+- **Troisième clé de déploiement, limitée au miroir Node** : même patron pour
+  `nascent-tech/memless-node` — clé SSH en écriture distincte, portée limitée à ce seul dépôt, secret
+  (`NODE_MIRROR_DEPLOY_KEY`) exposé au seul step de poussée du job `publish-node`, en
+  `contents: read`.
+- **Signalement privé des vulnérabilités** : activé sur le dépôt principal ; `SECURITY.md` y renvoie,
+  pour qu'une faille ne soit jamais décrite d'abord dans une issue publique.
 - **Jeton npm granulaire temporaire, puis Trusted Publishing** : la toute première publication npm
   s'authentifie par un jeton **granulaire** (portée publish sur `@nascent-tech/*`, Bypass 2FA, ≤ 90
   jours, secret `NPM_TOKEN`), parce que Trusted Publishing ne peut pas amorcer un paquet qui n'existe
