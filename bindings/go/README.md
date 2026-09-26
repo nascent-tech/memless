@@ -9,16 +9,21 @@ guessing rules and the supported SQL subset.
 
 ## Install
 
-Memless is distributed only through GitHub Releases, not a module proxy you
-need to configure by hand: Go modules resolve straight from the tag.
-
 ```sh
 go get github.com/nascent-tech/memless/bindings/go@vX.Y.Z
 ```
 
-Go resolves `vX.Y.Z` from the repository tag `bindings/go/vX.Y.Z`: the module
-lives in a subdirectory, so that tag must exist next to the release tag
-`vX.Y.Z`. Go 1.21 or later.
+That is all: from `v0.2.0` on, the module carries the native library, so
+there is nothing to download or configure. Go 1.21 or later, on macOS
+(`darwin-arm64`, `darwin-x64`) or Linux with glibc (`linux-x64-gnu`,
+`linux-arm64-gnu`); elsewhere, see [The cdylib](#the-cdylib).
+
+Go resolves `vX.Y.Z` from the repository tag `bindings/go/vX.Y.Z`, which the
+release workflow puts on a commit next to the release tag `vX.Y.Z`: the same
+sources plus the four libraries under `lib/<platform>/` and their
+`lib/SHA256SUMS`. That commit never lands on `main`, which carries no binary.
+Your program embeds the library of the platform it is built for, and only
+that one (about 5 MB); `v0.1.x` modules carried none.
 
 ## Surface
 
@@ -91,13 +96,31 @@ func main() {
 
 The bridge loads the native library on the first call that needs it, never
 at import time, and looks for it in the same order as the PHP and Node
-bridges: `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
-existing file, then, inside a checked-out workspace, `target/release/`, then
-`target/debug/` (`.dylib` before `.so`). The library must speak ABI version 5.
-Build it first:
+bridges:
+
+1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
+   existing file;
+2. the library embedded for this platform, extracted once into
+   `<user cache dir>/memless/<version>-<short sha256>/` (`~/Library/Caches` on
+   macOS, `$XDG_CACHE_HOME` or `~/.cache` on Linux). The directory is created
+   `0700`, the file is written to a temporary name then renamed, and before
+   every load its full SHA-256 is compared with the embedded bytes and the file
+   rewritten when they differ. On Linux with musl there is none;
+3. inside a checked-out workspace, `target/release/`, then `target/debug/`
+   (`.dylib` before `.so`).
+
+When the cache directory cannot be used, the bridge moves on to step 3. If the
+user cache directory is mounted `noexec`, the extracted library cannot be
+loaded: set `MEMLESS_LIB`. Musl is recognised by `/usr/bin/ldd`; if
+`/usr/bin/ldd` is absent (a minimal musl image), the bridge assumes glibc and
+the load fails: set `MEMLESS_LIB`. The bundled Linux libraries need glibc
+2.39 or later (Ubuntu 24.04 or later); on an older glibc, set `MEMLESS_LIB` to
+a library built locally. When nothing is found, the error says to set `MEMLESS_LIB`. The library must speak
+ABI version 5. On another platform, or with your own build, set `MEMLESS_LIB`:
 
 ```sh
 cargo build --release -p memless-capi
+export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
 `MEMLESS_LIB` loads arbitrary native code, like any FFI library path — only

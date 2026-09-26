@@ -4,19 +4,19 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7844e097b2e5e8684ffdaaa6ef25f6a4",
+    "content-hash": "e9ddb6907d8b181d8f22d5b0719645cc",
     "packages": [
         {
-            "name": "memless/php",
-            "version": "dev-feat/palier-1-parite",
+            "name": "nascent-tech/memless",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../../bindings/php",
-                "reference": "e2bd37e2645ede7d3c023ebdad5b891e72eda46b"
+                "reference": "ee05b234f8cab5f20792d9dae1bec79bc56f939c"
             },
             "require": {
                 "ext-ffi": "*",
-                "php": ">=7.4"
+                "php": ">=8.1"
             },
             "require-dev": {
                 "phpunit/phpunit": "^9.6 || ^10.5 || ^11.5"
@@ -36,6 +36,13 @@
                 "MIT"
             ],
             "description": "PHP FFI bridge to the memless C ABI",
+            "homepage": "https://github.com/nascent-tech/memless",
+            "keywords": [
+                "ffi",
+                "in-memory",
+                "sql",
+                "yaml"
+            ],
             "transport-options": {
                 "relative": true
             }
@@ -45,7 +52,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "memless/php": 20
+        "nascent-tech/memless": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,

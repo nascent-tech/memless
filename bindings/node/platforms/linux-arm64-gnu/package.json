@@ -1,0 +1,21 @@
+{
+  "name": "@nascent-tech/memless-linux-arm64-gnu",
+  "description": "The memless C library for Linux aarch64 with glibc (aarch64-unknown-linux-gnu), loaded by @nascent-tech/memless.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nascent-tech/memless.git",
+    "directory": "bindings/node/platforms/linux-arm64-gnu"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "libc": "glibc",
+  "files": [
+    "libmemless_capi.so"
+  ],
+  "preferUnplugged": true
+}

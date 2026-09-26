@@ -4,12 +4,17 @@
     "type": "project",
     "require": {
         "php": ">=7.4",
-        "memless/php": "@dev"
+        "nascent-tech/memless": "@dev"
     },
     "repositories": [
         {
             "type": "path",
-            "url": "../../../bindings/php"
+            "url": "../../../bindings/php",
+            "options": {
+                "versions": {
+                    "nascent-tech/memless": "dev-main"
+                }
+            }
         }
     ],
     "config": {
