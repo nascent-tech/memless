@@ -27,7 +27,7 @@ URL. Le seul paramètre d'exécution est le **chemin du fichier YAML**, passé e
 d'une instance, jamais par variable d'environnement. Les trois ponts, eux, résolvent la bibliothèque
 native dans cet ordre, identique dans les trois (depuis le palier 6) : **(1)** `MEMLESS_LIB`, si elle
 est posée — doit désigner un fichier existant, sinon erreur claire ; **(2)** la **bibliothèque
-embarquée** par le paquet du pont pour la plateforme courante (paquet npm de plateforme, bibliothèque
+embarquée** par le paquet du pont pour la plateforme courante (`lib/<plateforme>/` du paquet npm, bibliothèque
 du miroir PHP, module Go embarqué par `//go:embed`) ; **(3)** `target/release`, puis `target/debug` du
 workspace (développement). Un paramètre de résolution du pont, pas du moteur.
 

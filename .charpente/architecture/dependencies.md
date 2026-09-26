@@ -26,8 +26,8 @@ systématiquement le plus faible. La parade retenue n'est pas un fallback à l'e
 **exigence de construction** — bâtir et vérifier ce pont avec le même soin que les deux autres dès le
 premier jour, et le couvrir par le banc de parité (§11) sur chaque plateforme cible. La façon dont le
 binaire natif parvient à chaque écosystème est tranchée par la distribution (§12.3, question 6) :
-GitHub Releases, plus, depuis le palier 6, les registres natifs — **npm** (paquets de plateforme en
-`optionalDependencies`), **Packagist** (dépôt miroir alimenté par la CI, PHP a besoin du chemin d'un
+GitHub Releases, plus, depuis le palier 6, les registres natifs — **npm** (paquet unique qui embarque
+les quatre bibliothèques sous `lib/<plateforme>/`), **Packagist** (dépôt miroir alimenté par la CI, PHP a besoin du chemin d'un
 `.so`/`.dylib` livré à côté du paquet), **le proxy Go** (module `github.com/nascent-tech/memless-go`
 qui embarque sa bibliothèque par `//go:embed`, publié via un dépôt miroir `nascent-tech/memless-go`
 alimenté par la CI, sur le même patron que le miroir PHP ; extraite dans le cache utilisateur et
