@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+## [0.2.1] — 2026-09-26
+
 ### Corrigé
 
 - The PHP archive of the GitHub release carries the four bundled libraries and the C header (the
@@ -87,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The C ABI version is now 5, and the PHP, Go and Node.js bridges require an ABI 5 library.
 - The PHP bridge requires PHP 8.1 or later (it used to declare 7.4).
 
-[Non publié]: https://github.com/nascent-tech/memless/compare/v0.2.0...HEAD
+[Non publié]: https://github.com/nascent-tech/memless/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/nascent-tech/memless/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nascent-tech/memless/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/nascent-tech/memless/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/nascent-tech/memless/releases/tag/v0.1.0
