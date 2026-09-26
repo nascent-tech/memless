@@ -25,8 +25,11 @@ une dépendance absente est un échec de compilation ou de chargement, pas une p
 systématiquement le plus faible. La parade retenue n'est pas un fallback à l'exécution mais une
 **exigence de construction** — bâtir et vérifier ce pont avec le même soin que les deux autres dès le
 premier jour, et le couvrir par le banc de parité (§11) sur chaque plateforme cible. La façon dont le
-binaire natif parvient à chaque écosystème (PHP a besoin du chemin d'un `.so`, un module Go ne
-transporte pas de binaire) est tranchée par la distribution sur GitHub Releases (§12.3, question 6).
+binaire natif parvient à chaque écosystème est tranchée par la distribution (§12.3, question 6) :
+GitHub Releases, plus, depuis le palier 6, les registres natifs — **npm** (paquets de plateforme en
+`optionalDependencies`), **Packagist** (dépôt miroir alimenté par la CI, PHP a besoin du chemin d'un
+`.so`/`.dylib` livré à côté du paquet), **le proxy Go** (module qui embarque sa bibliothèque par
+`//go:embed`, extraite dans le cache utilisateur et vérifiée par SHA-256 avant chargement).
 
 Aucune de ces dépendances n'introduit de service à surveiller, de secret à stocker ou de quota à
 gérer : la surface d'exploitation de Memless est vide au sens réseau (§7, observabilité « aucune »).

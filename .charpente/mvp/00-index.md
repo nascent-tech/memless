@@ -9,7 +9,7 @@ statut: valide
 
 <!-- charpente-navigation -->
 **Le fil** : [brief — Moteur de base de données en mémoire pilotée par YAML](../brief/00-index.md) › **mvp — Prouver la promesse de Memless** › [cadrage — Palier 1 — Charger et refuser](../cadrage/2026-09-21-palier-1-charger-refuser.md) › [conception — Palier 1 — Charger et refuser](../conceptions/2026-09-21-palier-1-charger-refuser/00-index.md) › [plan — Palier 1 — Charger et refuser](../plans/2026-09-21-palier-1-charger-refuser/00-index.md)  
-**Aval** : [cadrage — Palier 1 — Charger et refuser](../cadrage/2026-09-21-palier-1-charger-refuser.md) · [cadrage — Palier 2 — Interroger](../cadrage/2026-09-21-palier-2-interroger.md) · [cadrage — Palier 3 — Écrire](../cadrage/2026-09-21-palier-3-ecrire.md) · [cadrage — Palier 4 — Transiger](../cadrage/2026-09-22-palier-4-transiger.md) · [cadrage — Palier 5 — Recharger, trier et tenir trois ponts](../cadrage/2026-09-26-palier-5-recharger-trier.md)  
+**Aval** : [cadrage — Palier 1 — Charger et refuser](../cadrage/2026-09-21-palier-1-charger-refuser.md) · [cadrage — Palier 2 — Interroger](../cadrage/2026-09-21-palier-2-interroger.md) · [cadrage — Palier 3 — Écrire](../cadrage/2026-09-21-palier-3-ecrire.md) · [cadrage — Palier 4 — Transiger](../cadrage/2026-09-22-palier-4-transiger.md) · [cadrage — Palier 5 — Recharger, trier et tenir trois ponts](../cadrage/2026-09-26-palier-5-recharger-trier.md) · [cadrage — Palier 6 — Publier sur les registres](../cadrage/2026-09-26-palier-6-publier.md)  
 **Parties** : [1. Le geste qui prouve](01-le-geste-et-le-tri.md) · [4. Ce qu'on accepte de faire mal](02-faiblesses-et-garanties.md) · [6. L'ordre, et ce que chaque étape rend démontrable](03-paliers-fini-trompe.md)  
 **Maillage** : [maillage.md](../maillage.md)
 

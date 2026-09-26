@@ -27,10 +27,17 @@ sont celles constatées dans le code et les manifestes du dépôt.
 | Protocole API | **aucun** | Memless n'expose pas d'API réseau : le seul « protocole » est l'appel FFI en mémoire |
 | Edge/CDN, BFF, broker | **aucun** | ni réseau, ni distribution, ni messagerie — hors sujet pour une bibliothèque embarquée (§4.1) |
 | Observabilité | **aucune au lancement** | pas de service à surveiller ; les erreurs remontent comme valeurs de retour au code appelant, l'audit des données passe par Git (§9.1 du brief) |
-| Cloud | **aucun** | rien à héberger ; distribution par **GitHub Releases** sur tag (`ARCHITECTURE.md` §12.3 Q6) |
+| Cloud | **aucun** | rien à héberger ; distribution par **GitHub Releases** sur tag, et depuis le palier 6 par les registres natifs de chaque langage — **npm**, **Packagist** (via un dépôt miroir), **le proxy Go** (module à bibliothèque embarquée) (`ARCHITECTURE.md` §12.3 Q6) |
 
 **Sous-ensemble SQL constaté** : lecture avec filtre, tri (`ORDER BY`), jointure par relation devinée,
 compte et somme ; insertion, mise à jour, suppression ; `BEGIN`/`COMMIT`/`ROLLBACK` ; `LIMIT`,
 `OFFSET`, `GROUP BY`, `DISTINCT` restent hors sous-ensemble (refusés « outside the supported SQL
 subset »). Les familles de systèmes publiées au lancement sont les quatre de Q7 ; le rechargement
 (`memless_reload`) est un verbe natif, pas du SQL (§4).
+
+**Distribution constatée depuis le palier 6** : chaque pont s'installe par l'outil natif de son
+langage — `npm install`, `composer require`, `go get` — sans télécharger la bibliothèque native à la
+main ni poser `MEMLESS_LIB`. L'ordre de résolution, identique dans les trois ponts, est
+`MEMLESS_LIB` → bibliothèque embarquée par le paquet pour la plateforme courante → `target/release`
+puis `target/debug` (développement). GitHub Releases reste, inchangé, pour qui préfère l'archive
+(`ARCHITECTURE.md` §12.3 Q6, cadrage `.charpente/cadrage/2026-09-26-palier-6-publier.md`).
