@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+## [0.4.0] — 2026-09-26
+
 ### Ajouté
 
 - Each version of the Node bridge is also pushed, exactly as npm installs it, to the mirror repository
@@ -120,7 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The C ABI version is now 5, and the PHP, Go and Node.js bridges require an ABI 5 library.
 - The PHP bridge requires PHP 8.1 or later (it used to declare 7.4).
 
-[Non publié]: https://github.com/nascent-tech/memless/compare/v0.3.0...HEAD
+[Non publié]: https://github.com/nascent-tech/memless/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/nascent-tech/memless/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nascent-tech/memless/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/nascent-tech/memless/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nascent-tech/memless/compare/v0.1.1...v0.2.0
