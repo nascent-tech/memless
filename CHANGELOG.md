@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A documentation site, <https://memless.nascent-tech.co>, with every code sample shown in
   Node.js, PHP and Go: pick your language once and every page follows. No code changes.
+- A logo, with its favicons, app icons and link-sharing card. The files are served at
+  <https://memless.nascent-tech.co/brand/> for use elsewhere. The site also publishes a `robots.txt`
+  that points search engines at its sitemap.
 
 ## [0.4.1] — 2026-09-26
 

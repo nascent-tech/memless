@@ -8,6 +8,22 @@ export default defineConfig({
 		starlight({
 			title: 'Memless',
 			description: 'Query and change a YAML file with SQL, from PHP, Go or Node.js.',
+			logo: {
+				light: './src/assets/memless-logo.svg',
+				dark: './src/assets/memless-logo-light.svg',
+				replacesTitle: true,
+			},
+			head: [
+				{ tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '32x32' } },
+				{ tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
+				{ tag: 'link', attrs: { rel: 'manifest', href: '/site.webmanifest' } },
+				{ tag: 'meta', attrs: { name: 'theme-color', content: '#16181D' } },
+				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://memless.nascent-tech.co/og.png' } },
+				{ tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
+				{ tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
+				{ tag: 'meta', attrs: { property: 'og:image:alt', content: 'memless — Query and change a YAML file with SQL' } },
+				{ tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
+			],
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/nascent-tech/memless' }],
 			editLink: { baseUrl: 'https://github.com/nascent-tech/memless/edit/main/site/' },
 			sidebar: [

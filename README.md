@@ -1,4 +1,9 @@
-# Memless
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="site/public/brand/memless-logo-light.svg">
+    <img src="site/public/brand/memless-logo.svg" alt="Memless" height="44">
+  </picture>
+</h1>
 
 **Query and change a YAML file with SQL, from PHP, Go or Node.js.**
 

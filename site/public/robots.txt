@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://memless.nascent-tech.co/sitemap-index.xml
