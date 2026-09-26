@@ -61,6 +61,7 @@ export default defineConfig({
 				{ tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
 				{ tag: 'link', attrs: { rel: 'manifest', href: '/site.webmanifest' } },
 				{ tag: 'link', attrs: { rel: 'service-doc', href: '/getting-started/install/' } },
+				{ tag: 'link', attrs: { rel: 'describedby', type: 'text/plain', href: '/llms.txt' } },
 				{ tag: 'meta', attrs: { name: 'theme-color', content: '#16181D' } },
 				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://memless.nascent-tech.co/og.png' } },
 				{ tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
