@@ -26,13 +26,10 @@ function workspaceWithRelease() {
   return { root, release };
 }
 
-function installedPlatformPackage(name, file) {
-  const project = tempDir();
-  const dir = path.join(project, 'node_modules', '@nascent-tech', `memless-${name}`);
-  writeFile(path.join(dir, 'package.json'), JSON.stringify({ name: `@nascent-tech/memless-${name}` }));
-  const library = writeFile(path.join(dir, file), 'bundled');
-  const resolve = (request) => require.resolve(request, { paths: [project] });
-  return { library, resolve };
+function bundledLibrary(name, file) {
+  const lib = path.join(tempDir(), 'lib');
+  const library = writeFile(path.join(lib, name, file), 'bundled');
+  return { library, lib };
 }
 
 test('MEMLESS_LIB wins over the bundled library and target/', () => {
@@ -43,26 +40,33 @@ test('MEMLESS_LIB wins over the bundled library and target/', () => {
 
 test('the bundled library comes before target/', () => {
   const { root } = workspaceWithRelease();
-  const { library, resolve } = installedPlatformPackage('darwin-arm64', 'libmemless_capi.dylib');
-  const embedded = () => embeddedLibrary(platformFor('darwin', 'arm64', null), resolve);
+  const { library, lib } = bundledLibrary('darwin-arm64', 'libmemless_capi.dylib');
+  const embedded = () => embeddedLibrary(platformFor('darwin', 'arm64', null), lib);
   assert.equal(resolveLibrary({ env: undefined, embedded, root }), library);
 });
 
-test('the bundled library is the file next to the platform package manifest', () => {
-  const { library, resolve } = installedPlatformPackage('linux-x64-gnu', 'libmemless_capi.so');
-  assert.equal(embeddedLibrary(platformFor('linux', 'x64', 'glibc'), resolve), library);
+test('the bundled library is the file under lib/ named after the platform', () => {
+  const { library, lib } = bundledLibrary('linux-x64-gnu', 'libmemless_capi.so');
+  assert.equal(embeddedLibrary(platformFor('linux', 'x64', 'glibc'), lib), library);
 });
 
-test('a platform with no platform package falls back to target/', () => {
+test('a platform with nothing bundled falls back to target/', () => {
   const { root, release } = workspaceWithRelease();
-  const embedded = () => embeddedLibrary(platformFor('win32', 'x64', null), require.resolve);
+  const { lib } = bundledLibrary('darwin-arm64', 'libmemless_capi.dylib');
+  const embedded = () => embeddedLibrary(platformFor('win32', 'x64', null), lib);
   assert.equal(resolveLibrary({ env: undefined, embedded, root }), release);
 });
 
-test('a platform package npm did not install falls back to target/', () => {
+test('a lib/ without the current platform falls back to target/', () => {
   const { root, release } = workspaceWithRelease();
-  const { resolve } = installedPlatformPackage('darwin-x64', 'libmemless_capi.dylib');
-  const embedded = () => embeddedLibrary(platformFor('darwin', 'arm64', null), resolve);
+  const { lib } = bundledLibrary('darwin-x64', 'libmemless_capi.dylib');
+  const embedded = () => embeddedLibrary(platformFor('darwin', 'arm64', null), lib);
+  assert.equal(resolveLibrary({ env: undefined, embedded, root }), release);
+});
+
+test('an empty lib/, as in a checked-out workspace, falls back to target/', () => {
+  const { root, release } = workspaceWithRelease();
+  const embedded = () => embeddedLibrary(platformFor('darwin', 'arm64', null), path.join(tempDir(), 'lib'));
   assert.equal(resolveLibrary({ env: undefined, embedded, root }), release);
 });
 
@@ -71,7 +75,7 @@ test('nothing anywhere fails with a message naming MEMLESS_LIB', () => {
   assert.throws(() => resolveLibrary({ env: undefined, embedded, root: tempDir() }), /set MEMLESS_LIB/);
 });
 
-test('the four published platforms map to their packages, the others to none', () => {
+test('the four bundled platforms map to their lib/ directories, the others to none', () => {
   assert.equal(platformFor('darwin', 'arm64', null).name, 'darwin-arm64');
   assert.equal(platformFor('darwin', 'x64', null).name, 'darwin-x64');
   assert.equal(platformFor('linux', 'x64', 'glibc').name, 'linux-x64-gnu');
@@ -94,7 +98,7 @@ test('without ldd, the report tells musl from glibc', () => {
   assert.equal(detectLibc({ ldd: () => null, report: () => musl }), 'musl');
 });
 
-test('an unknown libc is null, which leaves no platform package', () => {
+test('an unknown libc is null, which leaves no bundled library', () => {
   assert.equal(detectLibc({ ldd: () => 'something else', report: () => ({ header: {} }) }), null);
   assert.equal(detectLibc({ ldd: () => null, report: () => null }), null);
 });

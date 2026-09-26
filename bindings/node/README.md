@@ -13,21 +13,22 @@ memless is, the guessing rules and the supported SQL subset.
 npm install @nascent-tech/memless
 ```
 
-That is all: the package lists four platform packages as optional
-dependencies, at its own exact version, and npm installs only the one that
-matches your machine, which carries the native library:
+That is all: the package carries the native library for four platforms under
+`lib/<platform>/`, like the Go module and the Composer package, and the bridge
+loads the one that matches your machine:
 
-| Package | Platform |
+| Directory | Platform |
 | --- | --- |
-| `@nascent-tech/memless-darwin-arm64` | macOS on Apple silicon |
-| `@nascent-tech/memless-darwin-x64` | macOS on Intel |
-| `@nascent-tech/memless-linux-x64-gnu` | Linux x86_64 with glibc |
-| `@nascent-tech/memless-linux-arm64-gnu` | Linux aarch64 with glibc |
+| `lib/darwin-arm64/` | macOS on Apple silicon |
+| `lib/darwin-x64/` | macOS on Intel |
+| `lib/linux-x64-gnu/` | Linux x86_64 with glibc |
+| `lib/linux-arm64-gnu/` | Linux aarch64 with glibc |
 
 The Linux libraries need glibc 2.39 or later (Ubuntu 24.04 or later). Elsewhere
 (Linux with musl or an older glibc, for instance), see [The cdylib](#the-cdylib).
-Installing with `--omit=optional` (or `--no-optional`) skips the platform
-package too; the bridge then needs `MEMLESS_LIB`.
+
+Up to 0.3.0, each library came in its own optional package,
+`@nascent-tech/memless-<platform>`; those packages are no longer published.
 
 ## Surface
 
@@ -77,11 +78,10 @@ bridges:
 
 1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
    existing file;
-2. the library of the platform package npm installed, found with
-   `require.resolve('@nascent-tech/memless-<platform>/package.json')`. On
-   Linux the bridge checks the libc itself, once (`/usr/bin/ldd`, then
-   `process.report`), because an older npm ignores the `libc` field of the
-   platform packages: musl, or a libc it cannot tell, has no platform package;
+2. the library this package bundles for the current platform, under
+   `lib/<platform>/`. On Linux the bridge checks the libc, once
+   (`/usr/bin/ldd`, then `process.report`), because the bundled libraries
+   need glibc: musl, or a libc it cannot tell, has no bundled library;
 3. inside a checked-out workspace, `target/release/`, then `target/debug/`
    (`.dylib` before `.so`).
 
@@ -97,10 +97,9 @@ export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 `MEMLESS_LIB` loads arbitrary native code, like any FFI library path — only
 point it at a library you trust.
 
-In this repository, `package.json` does not list the platform packages: the
-release workflow adds them when it publishes, from the templates under
-`platforms/`, so that installing the bridge for development never pulls a
-published library over the one you build under `target/`.
+In this repository, `lib/` is empty: the release workflow fills it with the
+four libraries when it packs the bridge, so that working on the bridge always
+loads the library you build under `target/`.
 
 ## Running the tests
 

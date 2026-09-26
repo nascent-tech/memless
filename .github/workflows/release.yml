@@ -396,31 +396,23 @@ jobs:
           name: memless-lib
           path: dist/lib
 
-      - name: Assemble the four platform packages and the main package
+      - name: Assemble the package with the four libraries under lib/
         run: |
           set -euo pipefail
           packs="${GITHUB_WORKSPACE}/dist/packs"
           mkdir -p "$packs" dist/npm
-          for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
-            staging="dist/npm/${platform}"
-            cp -R "bindings/node/platforms/${platform}" "$staging"
-            cp dist/lib/"${platform}"/libmemless_capi.* LICENSE "$staging"/
-            (cd "$staging" && npm pkg set "version=${VERSION}" && npm pack --pack-destination "$packs")
-          done
           main=dist/npm/main
           cp -R bindings/node "$main"
+          rm -f "$main"/lib/.gitignore
           cp LICENSE "$main"/
-          (
-            cd "$main"
-            for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
-              npm pkg set "optionalDependencies.@nascent-tech/memless-${platform}=${VERSION}"
-            done
-            npm pack --pack-destination "$packs"
-          )
+          cp -R dist/lib/. "$main"/lib/
+          (cd "$main"/lib && sha256sum -c SHA256SUMS)
+          (cd "$main" && npm pack --pack-destination "$packs")
           ls -l "$packs"
-          tar -xzOf "${packs}/nascent-tech-memless-${VERSION}.tgz" package/package.json | jq .optionalDependencies
+          tar -tzvf "${packs}/nascent-tech-memless-${VERSION}.tgz" | grep ' package/lib/'
+          test "$(tar -tzf "${packs}/nascent-tech-memless-${VERSION}.tgz" | grep -c '^package/lib/.')" -eq 5
 
-      - name: Test the packages on linux-x64-gnu, without target/ or MEMLESS_LIB
+      - name: Test the package on linux-x64-gnu, without target/ or MEMLESS_LIB
         run: |
           set -euo pipefail
           packs="${GITHUB_WORKSPACE}/dist/packs"
@@ -428,9 +420,7 @@ jobs:
           mkdir -p "$project"
           cd "$project"
           npm init -y >/dev/null
-          npm install --no-audit --no-fund \
-            "${packs}/nascent-tech-memless-${VERSION}.tgz" \
-            "${packs}/nascent-tech-memless-linux-x64-gnu-${VERSION}.tgz"
+          npm install --no-audit --no-fund "${packs}/nascent-tech-memless-${VERSION}.tgz"
           printf 'users:\n  - id: 01H7B2\n    name: Ada\n' >data.yaml
           env -u MEMLESS_LIB node -e "
             const { load } = require('@nascent-tech/memless');
@@ -471,7 +461,7 @@ jobs:
           name: memless-npm-packages
           path: dist/packs
 
-      - name: Publish the platform packages, then the main package
+      - name: Publish the package
         if: needs.plan.outputs.publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -481,25 +471,20 @@ jobs:
           if [ -n "${NODE_AUTH_TOKEN}" ]; then
             provenance=(--provenance)
           fi
-          for suffix in -darwin-arm64 -darwin-x64 -linux-x64-gnu -linux-arm64-gnu ""; do
-            name="@nascent-tech/memless${suffix}"
-            tgz="dist/packs/nascent-tech-memless${suffix}-${VERSION}.tgz"
-            if [ "$(npm view "${name}@${VERSION}" version 2>/dev/null || true)" = "$VERSION" ]; then
-              echo "${name}@${VERSION} is already published; skipped"
-              continue
-            fi
-            npm publish "$tgz" --access public "${provenance[@]}"
-          done
+          name="@nascent-tech/memless"
+          if [ "$(npm view "${name}@${VERSION}" version 2>/dev/null || true)" = "$VERSION" ]; then
+            echo "${name}@${VERSION} is already published; skipped"
+            exit 0
+          fi
+          npm publish "dist/packs/nascent-tech-memless-${VERSION}.tgz" --access public "${provenance[@]}"
 
-      - name: Show the packages that would be published
+      - name: Show the package that would be published
         if: needs.plan.outputs.publish != 'true'
         run: |
           set -euo pipefail
-          for suffix in -darwin-arm64 -darwin-x64 -linux-x64-gnu -linux-arm64-gnu ""; do
-            tgz="dist/packs/nascent-tech-memless${suffix}-${VERSION}.tgz"
-            echo "dry run: would publish @nascent-tech/memless${suffix}@${VERSION} from ${tgz}"
-            tar -tzvf "$tgz"
-          done
+          tgz="dist/packs/nascent-tech-memless-${VERSION}.tgz"
+          echo "dry run: would publish @nascent-tech/memless@${VERSION} from ${tgz}"
+          tar -tzvf "$tgz"
 
   publish-php:
     name: publish-php

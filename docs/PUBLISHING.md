@@ -15,7 +15,7 @@ four places:
 | --- | --- | --- | --- |
 | GitHub Releases | `memless-capi-X.Y.Z-<target>.tar.gz` ×4, `nascent-tech-memless-X.Y.Z.tgz`, `memless-php-X.Y.Z.zip`, `memless-lib-SHA256SUMS`, `SHA256SUMS` | `publish` | always, on a tag |
 | Go module proxy | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-go`, module `github.com/nascent-tech/memless-go` | `publish-go` | repository variable `GO_MIRROR_PUBLISH` is `true` |
-| npm | `@nascent-tech/memless-darwin-arm64`, `-darwin-x64`, `-linux-x64-gnu`, `-linux-arm64-gnu`, then `@nascent-tech/memless` | `publish-npm` | repository variable `NPM_PUBLISH` is `true` |
+| npm | `@nascent-tech/memless`, with `lib/<platform>/` and `lib/SHA256SUMS` | `publish-npm` | repository variable `NPM_PUBLISH` is `true` |
 | Packagist | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-php`, package `nascent-tech/memless` | `publish-php` | repository variable `PHP_MIRROR_PUBLISH` is `true` |
 
 The four platforms and their Rust targets:
@@ -38,11 +38,11 @@ The jobs, in order:
    and uploads the raw library.
 3. `libraries` gathers the four raw libraries into `lib/<platform>/` and writes
    `lib/SHA256SUMS`. Every package below ships these exact bytes.
-4. `npm-packages` builds the four platform packages from
-   `bindings/node/platforms/<platform>/package.json` and the main package, to
-   which it adds the four platform packages as `optionalDependencies` at
-   exactly `X.Y.Z`. It installs them on Linux x86_64, runs a query, and
-   uploads the five tarballs. It needs no account, so it always runs.
+4. `npm-packages` packs `bindings/node` (without `lib/.gitignore`, plus
+   `LICENSE`, `lib/<platform>/` and `lib/SHA256SUMS`) into
+   `nascent-tech-memless-X.Y.Z.tgz`, installs it on Linux x86_64 outside the
+   repository without `MEMLESS_LIB`, runs a query, and uploads the tarball. It
+   needs no account, so it always runs.
 5. `php-package` assembles the Composer package tree (`bindings/php` without
    `vendor`, `tests/`, `phpunit.xml.dist`, `composer.lock` and
    `lib/.gitignore`, plus `LICENSE`, `lib/<platform>/`, `lib/SHA256SUMS` and
@@ -60,12 +60,11 @@ The jobs, in order:
    `target/`) on Linux x86_64 and runs a query. It uploads the tree as an
    artifact. It needs no account, so it always runs.
 7. `publish` creates the GitHub release, whose npm tarball is the one
-   `npm-packages` built (with its `optionalDependencies`) and whose PHP
-   archive is the zip `php-package` built. It waits for `go-package` too, so
-   no release is created while one package fails its test. When the release
-   already exists, it says so and leaves it alone: assets are never replaced.
-8. `publish-npm` installs npm 11 and publishes the tarballs of `npm-packages`,
-   the platform packages first and the main package last.
+   `npm-packages` built and whose PHP archive is the zip `php-package` built.
+   It waits for `go-package` too, so no release is created while one package
+   fails its test. When the release already exists, it says so and leaves it
+   alone: assets are never replaced.
+8. `publish-npm` installs npm 11 and publishes the tarball of `npm-packages`.
 9. `publish-php` takes the package tree `php-package` assembled and tested,
    and pushes it to the mirror as a single orphan commit, forced onto the
    mirror's `main`, and tags it `vX.Y.Z`. Packagist picks the tag up through
@@ -128,16 +127,13 @@ logged in as an owner of the `nascent-tech` organization.
    ```
 
 4. **After the first release**, switch to trusted publishing, which needs no
-   long-lived secret. For each of the five packages
-   (`@nascent-tech/memless`, `@nascent-tech/memless-darwin-arm64`,
-   `@nascent-tech/memless-darwin-x64`, `@nascent-tech/memless-linux-x64-gnu`,
-   `@nascent-tech/memless-linux-arm64-gnu`): package page → *Settings* →
+   long-lived secret. On the page of `@nascent-tech/memless` → *Settings* →
    *Trusted Publisher* → *GitHub Actions*, with organization `nascent-tech`,
    repository `memless`, workflow filename `release.yml`, and no environment.
    Then, still under *Settings* → *Publishing access*, choose *Require
    two-factor authentication and disallow tokens*.
 
-   Once all five have a trusted publisher, delete the token on npmjs.com
+   Once it has a trusted publisher, delete the token on npmjs.com
    (*Access Tokens*) and in the repository:
 
    ```sh
@@ -147,6 +143,22 @@ logged in as an owner of the `nascent-tech` organization.
    From then on the workflow authenticates through OIDC (npm 11.5.1 or later;
    the job installs the latest npm 11), and npm attaches provenance on its own. While
    `NPM_TOKEN` exists, the workflow uses it and passes `--provenance` itself.
+
+5. **The former platform packages.** Up to 0.3.0, each library came in its
+   own package, `@nascent-tech/memless-<platform>`, as an optional dependency
+   of `@nascent-tech/memless`. From 0.4.0 they are no longer published. Once
+   0.4.0 is on npm and checked, deprecate them — never unpublish them, the
+   earlier versions of `@nascent-tech/memless` depend on them:
+
+   ```sh
+   for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
+     npm deprecate "@nascent-tech/memless-${platform}" \
+       "Since 0.4.0, @nascent-tech/memless bundles its libraries under lib/<platform>/; this package is no longer published."
+   done
+   ```
+
+   Then remove their four trusted publishers (package page → *Settings* →
+   *Trusted Publisher*); only the one of `@nascent-tech/memless` remains.
 
 ### Packagist, through the mirror repository
 
@@ -247,7 +259,7 @@ GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless-go@v
 ## Dry run
 
 A manual run of the workflow is a rehearsal. It builds the four libraries,
-assembles every package — `npm pack` of the five npm packages, the PHP and
+assembles every package — `npm pack` of the npm package, the PHP and
 Go mirror trees and their orphan commits — and runs the same Linux install
 tests, then prints what each job would publish instead of publishing it. It
 does not create the GitHub release, push a tag, or publish to npm, and it
@@ -268,9 +280,7 @@ release; started on a branch, it stays a dry run.
 
 1. **Prepare the version** in a release pull request: the version of the
    three crates, of `bindings/node/package.json` (and the two npm lock files),
-   and the `CHANGELOG.md` section. The platform templates under
-   `bindings/node/platforms/` carry no version: the workflow gives them the
-   tag's. Merge it.
+   and the `CHANGELOG.md` section. Merge it.
 
 2. **Rehearse** with a [dry run](#dry-run) on `main`, and read what each
    job would publish.
@@ -291,7 +301,7 @@ release; started on a branch, it stays a dry run.
 
    ```sh
    gh release view vX.Y.Z --repo nascent-tech/memless
-   npm view @nascent-tech/memless@X.Y.Z optionalDependencies
+   npm view @nascent-tech/memless@X.Y.Z dist.unpackedSize
    composer show --all nascent-tech/memless
    GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless-go@vX.Y.Z
    ```
@@ -302,7 +312,7 @@ release; started on a branch, it stays a dry run.
    github.com/nascent-tech/memless-go@vX.Y.Z`) and run one query.
 
 5. **After the very first release**, finish the owner's setup: attach the npm
-   trusted publishers and delete `NPM_TOKEN`, and submit the mirror to
+   trusted publisher and delete `NPM_TOKEN`, and submit the mirror to
    Packagist (see [One-time setup](#one-time-setup-by-the-owner)).
 
 If a job fails, fix the cause and re-run the failed jobs from the run page
@@ -312,10 +322,9 @@ If a job fails, fix the cause and re-run the failed jobs from the run page
 
 `lib/SHA256SUMS` lists the SHA-256 of each bundled library, with paths
 relative to `lib/` (`darwin-arm64/libmemless_capi.dylib`, …). The same file
-ships in the Go module (`lib/SHA256SUMS` of the mirror
-`nascent-tech/memless-go`), in the Composer
+ships in the npm package (`lib/SHA256SUMS`), in the Go module
+(`lib/SHA256SUMS` of the mirror `nascent-tech/memless-go`), in the Composer
 package (`lib/SHA256SUMS`) and on the GitHub release as
 `memless-lib-SHA256SUMS`; the release's own `SHA256SUMS` covers every release
-asset, that file included. The npm platform packages carry the same bytes;
-`npm view @nascent-tech/memless-<platform>@X.Y.Z dist` gives their tarball
-integrity.
+asset, that file included. `npm view @nascent-tech/memless@X.Y.Z dist` gives
+the integrity of the npm tarball.
