@@ -7,8 +7,7 @@
 # k = 1, 10, 100, 1000 writes, the p50/p95 of a committed transaction of k writes
 # (one rewrite) versus k isolated writes (k rewrites). The reload bench prints, for
 # k = 4, 100, 1000, 10000, the p50/p95 of a full load, one reload of a live
-# instance, and a suite of 100 reloads. Feed the numbers by hand into
-# .charpente/releves/banc.md.
+# instance, and a suite of 100 reloads.
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd) || exit 1

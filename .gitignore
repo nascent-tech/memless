@@ -1,10 +1,6 @@
 # macOS
 .DS_Store
 
-# Claude Code
-.claude/*.lock
-.claude/worktrees/
-.claude/settings.local.json
 
 # Rust
 /target/
@@ -28,3 +24,10 @@ harness/parity/tests/.fake-transaction-driver
 
 # Node.js bridge and parity driver dependencies
 node_modules/
+
+# Internal design records and tooling configuration, kept out of the public repository
+/.charpente/
+/.charpente.json
+/ARCHITECTURE.md
+/.claude/
+/CLAUDE.md

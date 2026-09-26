@@ -87,4 +87,4 @@ bash harness/parity/tests/detects-reload-divergence.sh       # a restored reload
 Zero divergence across these fixtures shows the PHP, Go and Node bridges speak with
 one voice on one family of systems. It **opens** hypothesis §17.1 (the real parity
 of PHP), it does not close it: that is settled across every family of systems.
-Timing lives in the bench (`harness/bench/run.sh`, `.charpente/releves/banc.md`).
+Timing lives in the bench (`harness/bench/run.sh`).

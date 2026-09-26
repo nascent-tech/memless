@@ -1,4 +1,0 @@
-{
-  "architecture": "hexagonal",
-  "layers": [["domain"], ["application"], ["interface"], ["infrastructure"]]
-}

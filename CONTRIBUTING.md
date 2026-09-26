@@ -50,7 +50,6 @@ are a good place to start.
 | `bindings/php`, `bindings/go`, `bindings/node` | The three thin bridges, each over the same C ABI. |
 | `harness/parity` | The parity harness: one battery of fixtures, queries, writes, transactions and reloads replayed through the three bridges. |
 | `docs/PUBLISHING.md` | How a release is published (maintainers). |
-| `ARCHITECTURE.md`, `.charpente/` | The architecture and the design records behind each decision, written in French. |
 
 **The parity rule.** The same SQL against the same file must give the same
 answer, and the same refusal with the same message, in PHP, Go and Node.js. So:
@@ -117,9 +116,7 @@ for test in harness/parity/tests/detects-*.sh; do bash "$test"; done
   before it; a refusal is tested as carefully as a success.
 - **Keep refusals exact.** An error message is part of the contract: the three
   bridges return it verbatim, and the parity harness compares it.
-- **Code, comments, commits and pull requests are written in English.** The
-  design records under `.charpente/` are in French; if your change contradicts
-  one of them, say so in the pull request and a maintainer will update it.
+- **Code, comments, commits and pull requests are written in English.**
 - **Update the docs** your change affects: the project `README.md`, the
   bridge's `README.md`, and an entry under `## [Non publié]` in
   [`CHANGELOG.md`](CHANGELOG.md) for anything a user would notice.
