@@ -27,6 +27,10 @@ loads the one that matches your machine:
 The Linux libraries need glibc 2.39 or later (Ubuntu 24.04 or later). Elsewhere
 (Linux with musl or an older glibc, for instance), see [The cdylib](#the-cdylib).
 
+Each version is also shown, exactly as npm installs it, in the mirror
+repository `nascent-tech/memless-node`, which the release workflow fills at
+each version, like the PHP and Go mirrors.
+
 Up to 0.3.0, each library came in its own optional package,
 `@nascent-tech/memless-<platform>`; those packages are no longer published.
 

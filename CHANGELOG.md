@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+### Ajouté
+
+- Each version of the Node bridge is also pushed, exactly as npm installs it, to the mirror repository
+  `nascent-tech/memless-node`, like the PHP and Go bridges to theirs.
+
 ### Modifié
 
 - `npm install @nascent-tech/memless` brings the four native libraries inside the package, under

@@ -435,6 +435,19 @@ jobs:
           path: dist/packs/
           if-no-files-found: error
 
+      - name: Unpack the package as the Node mirror tree
+        run: |
+          set -euo pipefail
+          mkdir -p dist/memless-node
+          tar -xzf "dist/packs/nascent-tech-memless-${VERSION}.tgz" -C dist/memless-node --strip-components=1
+          (cd dist/memless-node && find . -type f | sort)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-node-tree
+          path: dist/memless-node/
+          if-no-files-found: error
+
   publish-npm:
     name: publish-npm
     needs: [plan, npm-packages]
@@ -610,6 +623,70 @@ jobs:
       - name: Show the mirror commit that would be pushed
         if: needs.plan.outputs.publish != 'true'
         working-directory: dist/memless-go
+        run: |
+          echo "dry run: would force-push main and push tag v${VERSION} to ${MIRROR}"
+          git ls-tree -r -l HEAD
+
+  publish-node:
+    name: publish-node
+    needs: [plan, npm-packages]
+    if: needs.plan.outputs.publish != 'true' || vars.NODE_MIRROR_PUBLISH == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      MIRROR: git@github.com:nascent-tech/memless-node.git
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-node-tree
+          path: dist/memless-node
+
+      - name: Commit the mirror tree as an orphan commit
+        working-directory: dist/memless-node
+        run: |
+          set -euo pipefail
+          git init -q
+          git checkout -q --orphan main
+          git add -A
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "memless ${VERSION}" -m "Built from nascent-tech/memless@${GITHUB_SHA}."
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "v${VERSION}" -m "memless ${VERSION}"
+          git log --stat -1
+
+      - name: Push the mirror
+        if: needs.plan.outputs.publish == 'true'
+        working-directory: dist/memless-node
+        env:
+          NODE_MIRROR_DEPLOY_KEY: ${{ secrets.NODE_MIRROR_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_MIRROR_DEPLOY_KEY}" ]; then
+            echo "NODE_MIRROR_PUBLISH is true but the NODE_MIRROR_DEPLOY_KEY secret is missing (docs/PUBLISHING.md)" >&2
+            exit 1
+          fi
+          ssh_dir="${RUNNER_TEMP}/mirror-ssh"
+          mkdir -p "$ssh_dir"
+          chmod 700 "$ssh_dir"
+          printf '%s\n' "$NODE_MIRROR_DEPLOY_KEY" >"$ssh_dir/key"
+          chmod 600 "$ssh_dir/key"
+          curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' >"$ssh_dir/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i ${ssh_dir}/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${ssh_dir}/known_hosts"
+          if git ls-remote --exit-code --tags "$MIRROR" "refs/tags/v${VERSION}" >/dev/null; then
+            echo "v${VERSION} is already in the mirror; it is never moved"
+            exit 0
+          fi
+          git push --force "$MIRROR" main
+          git push "$MIRROR" "refs/tags/v${VERSION}"
+
+      - name: Show the mirror commit that would be pushed
+        if: needs.plan.outputs.publish != 'true'
+        working-directory: dist/memless-node
         run: |
           echo "dry run: would force-push main and push tag v${VERSION} to ${MIRROR}"
           git ls-tree -r -l HEAD

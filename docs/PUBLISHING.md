@@ -9,7 +9,7 @@ one.
 
 A tag `vX.Y.Z` pushed on `main` runs `.github/workflows/release.yml`, which
 builds the C library for the four supported platforms and publishes it in
-four places:
+five places:
 
 | Where | What | Job | Runs when |
 | --- | --- | --- | --- |
@@ -17,6 +17,10 @@ four places:
 | Go module proxy | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-go`, module `github.com/nascent-tech/memless-go` | `publish-go` | repository variable `GO_MIRROR_PUBLISH` is `true` |
 | npm | `@nascent-tech/memless`, with `lib/<platform>/` and `lib/SHA256SUMS` | `publish-npm` | repository variable `NPM_PUBLISH` is `true` |
 | Packagist | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-php`, package `nascent-tech/memless` | `publish-php` | repository variable `PHP_MIRROR_PUBLISH` is `true` |
+| Node mirror | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-node`, holding exactly what the npm package installs | `publish-node` | repository variable `NODE_MIRROR_PUBLISH` is `true` |
+
+The three mirrors are public, and only the release workflow writes to them:
+contributions go to this repository (see [`CONTRIBUTING.md`](../CONTRIBUTING.md)).
 
 The four platforms and their Rust targets:
 
@@ -41,8 +45,9 @@ The jobs, in order:
 4. `npm-packages` packs `bindings/node` (without `lib/.gitignore`, plus
    `LICENSE`, `lib/<platform>/` and `lib/SHA256SUMS`) into
    `nascent-tech-memless-X.Y.Z.tgz`, installs it on Linux x86_64 outside the
-   repository without `MEMLESS_LIB`, runs a query, and uploads the tarball. It
-   needs no account, so it always runs.
+   repository without `MEMLESS_LIB`, runs a query, and uploads the tarball,
+   then the tarball's content unpacked as the Node mirror tree. It needs no
+   account, so it always runs.
 5. `php-package` assembles the Composer package tree (`bindings/php` without
    `vendor`, `tests/`, `phpunit.xml.dist`, `composer.lock` and
    `lib/.gitignore`, plus `LICENSE`, `lib/<platform>/`, `lib/SHA256SUMS` and
@@ -72,13 +77,17 @@ The jobs, in order:
 10. `publish-go` does the same with the module tree `go-package` assembled
     and tested, in the mirror `nascent-tech/memless-go`. The Go module proxy
     picks the tag up on the first `go get` of that version.
+11. `publish-node` does the same with the unpacked npm package, in the mirror
+    `nascent-tech/memless-node`. npm itself is fed by `publish-npm` from this
+    repository, so the mirror only shows what each version installs.
 
 Each job only gets the permissions it needs: `publish` can write the
 repository's contents, `publish-npm` can request an OIDC token for npm, the
 others can only read. `NPM_TOKEN` is only exposed to the step of
 `publish-npm` that publishes, `PHP_MIRROR_DEPLOY_KEY` only to the step of
-`publish-php` that pushes, and `GO_MIRROR_DEPLOY_KEY` only to the step of
-`publish-go` that pushes. Each deploy key can write to its own mirror and
+`publish-php` that pushes, `GO_MIRROR_DEPLOY_KEY` only to the step of
+`publish-go` that pushes, and `NODE_MIRROR_DEPLOY_KEY` only to the step of
+`publish-node` that pushes. Each deploy key can write to its own mirror and
 nothing else.
 
 Every publishing step can be re-run safely: an existing GitHub release is
@@ -89,8 +98,8 @@ version is wrong, release a new patch version.
 
 ## One-time setup by the owner
 
-Until the owner has done this, `publish-npm`, `publish-php` and `publish-go`
-are skipped on a tag and the workflow stays green; the GitHub release is
+Until the owner has done this, `publish-npm`, `publish-php`, `publish-go` and
+`publish-node` are skipped on a tag and the workflow stays green; the GitHub release is
 published regardless. Every command below assumes the GitHub CLI (`gh`) is
 logged in as an owner of the `nascent-tech` organization.
 
@@ -171,7 +180,7 @@ published from a mirror that only the release workflow writes to.
 
    ```sh
    gh repo create nascent-tech/memless-php --public \
-     --description "Packagist mirror of the memless PHP bridge, written by nascent-tech/memless's release workflow"
+     --description "Mirror of the memless PHP bridge as published to Packagist (nascent-tech/memless), written by the release workflow. Issues and pull requests go to github.com/nascent-tech/memless."
    ```
 
 2. **Give the workflow a deploy key** that can write to the mirror and
@@ -256,15 +265,42 @@ To make the new version show up at once instead of on the first user's
 GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless-go@vX.Y.Z
 ```
 
+### Node mirror
+
+The npm package needs no mirror to be published; the mirror
+`nascent-tech/memless-node` shows, for each version, exactly what
+`npm install @nascent-tech/memless` installs, like the PHP and Go mirrors.
+
+1. **The mirror exists**: `nascent-tech/memless-node`, public, issues closed
+   (contributions go to this repository), created empty (the workflow
+   force-pushes its `main`). Its deploy key, with write access, is registered
+   too; the maintainer keeps the private half in
+   `~/.ssh/memless_node_mirror_deploy`. The secret `NODE_MIRROR_DEPLOY_KEY`
+   and the variable `NODE_MIRROR_PUBLISH=true` are set. Had they to be
+   recreated:
+
+   ```sh
+   gh repo create nascent-tech/memless-node --public \
+     --description "Mirror of the memless Node.js bridge as published to npm (@nascent-tech/memless), written by the release workflow. Issues and pull requests go to github.com/nascent-tech/memless."
+   gh repo edit nascent-tech/memless-node --enable-issues=false --enable-wiki=false --enable-projects=false
+   ssh-keygen -t ed25519 -N "" -C "memless release workflow" -f memless-node-deploy
+   gh repo deploy-key add memless-node-deploy.pub --repo nascent-tech/memless-node \
+     --title "memless release workflow" --allow-write
+   gh secret set NODE_MIRROR_DEPLOY_KEY --repo nascent-tech/memless < memless-node-deploy
+   gh variable set NODE_MIRROR_PUBLISH --body true --repo nascent-tech/memless
+   ```
+
+   Keep the private key outside the repository, and delete the public half.
+
 ## Dry run
 
 A manual run of the workflow is a rehearsal. It builds the four libraries,
-assembles every package — `npm pack` of the npm package, the PHP and
-Go mirror trees and their orphan commits — and runs the same Linux install
+assembles every package — `npm pack` of the npm package, the PHP, Go and
+Node mirror trees and their orphan commits — and runs the same Linux install
 tests, then prints what each job would publish instead of publishing it. It
 does not create the GitHub release, push a tag, or publish to npm, and it
-ignores `NPM_PUBLISH`, `PHP_MIRROR_PUBLISH` and `GO_MIRROR_PUBLISH`, so it
-works before any account exists. The version is the one in `bindings/node/package.json`.
+ignores `NPM_PUBLISH`, `PHP_MIRROR_PUBLISH`, `GO_MIRROR_PUBLISH` and
+`NODE_MIRROR_PUBLISH`, so it works before any account exists. The version is the one in `bindings/node/package.json`.
 
 ```sh
 gh workflow run release.yml --repo nascent-tech/memless --ref main -f dry_run=true
@@ -304,6 +340,7 @@ release; started on a branch, it stays a dry run.
    npm view @nascent-tech/memless@X.Y.Z dist.unpackedSize
    composer show --all nascent-tech/memless
    GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless-go@vX.Y.Z
+   git ls-remote --tags https://github.com/nascent-tech/memless-node vX.Y.Z
    ```
 
    Then, in an empty directory outside the repository and without
