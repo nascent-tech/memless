@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writable either way), and a released instance faults.
 - The C ABI exposes `memless_reload`, and the parity harness replays reload scenarios on all three
   bridges.
+- The project is licensed under MIT, and its README explains what Memless is, the guessing rules,
+  the SQL subset, transactions and reload, errors, installation and the parity harness, with one
+  example per language; each bridge has its own README.
+- Continuous integration runs the four Rust gates, the three bridges' tests, the Node.js type check
+  and the three-bridge parity harness on `aarch64-apple-darwin`, `x86_64-apple-darwin`,
+  `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`; a `v*` tag publishes a GitHub release
+  with the library for each of these targets, the PHP archive and the Node.js package.
 
 ### Modifié
 
