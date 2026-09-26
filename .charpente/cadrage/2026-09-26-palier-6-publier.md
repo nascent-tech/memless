@@ -3,8 +3,8 @@ type: cadrage
 titre: Palier 6 — Publier sur les registres
 slug: palier-6-publier
 cree_le: 2026-09-26T12:11:30+0000
-mis_a_jour_le: 2026-09-26T12:13:47+0000
-branche: docs/palier-6-publier
+mis_a_jour_le: 2026-09-26T12:50:37+0000
+branche: feat/publish-registries
 statut: valide
 ---
 
@@ -20,8 +20,8 @@ Depuis : .charpente/mvp/00-index.md
 Cadrage du **palier 6**, postérieur au MVP livré en 0.1.1 : « Publier sur les registres ». Il révise
 `ARCHITECTURE.md` §12.3 question 6 (« Distribution du binaire natif — TRANCHÉ » : GitHub Releases
 seul) et la dette §12.2 sur la résolution `MEMLESS_LIB`/`target/` seule. Décisions tranchées par
-l'arbitrage Fable du 2026-09-26, sur demande du propriétaire ; le code correspondant arrive par une
-branche parallèle. Ce document décrit l'état livré en **0.2.0**.
+l'arbitrage Fable du 2026-09-26, sur demande du propriétaire ; le code correspondant est livré par
+`feat/publish-registries` (0.2.0). Ce document décrit l'état livré en **0.2.0**.
 
 ## 1. Acteur et déclencheur
 
@@ -76,7 +76,7 @@ Go** ; « package manager » (anglicisme) — dire **outil natif du langage** ou
 | 1 | **Bibliothèque de plateforme trouvée** | Politique — *dès que* `MEMLESS_LIB` n'est pas posée, *alors* chaque pont cherche la bibliothèque embarquée par son paquet pour la plateforme courante, avant `target/release` puis `target/debug`. | Le pont s'ouvre sans configuration supplémentaire. |
 | 2 | **Plateforme non embarquée (musl, Windows)** | Politique — *dès qu'*aucune bibliothèque embarquée n'existe pour la plateforme courante, *alors* le pont retombe sur `target/release`/`target/debug`, puis refuse avec un message clair qui cite `MEMLESS_LIB`. | Le message de refus, qui nomme `MEMLESS_LIB` comme échappatoire. |
 | 3 | **npm publié** | Système — la CI, sur un tag `v*` et la variable de dépôt `NPM_PUBLISH == 'true'`, publie les quatre paquets de plateforme puis le paquet principal. | Le paquet visible sur npm à la version du tag ; `npm install @nascent-tech/memless` fonctionne. |
-| 4 | **Miroir PHP publié** | Système — la CI pousse un commit orphelin (contenu de `bindings/php`, sans vendor, plus les bibliothèques des quatre plateformes et `lib/SHA256SUMS`) sur `nascent-tech/memless-php`, tag `vX.Y.Z`, `main` du miroir poussé en force dessus. | Le hook GitHub met Packagist à jour ; `composer require nascent-tech/memless` fonctionne. |
+| 4 | **Miroir PHP publié** | Système — la CI pousse un commit orphelin (contenu de `bindings/php` sans `vendor`, `tests/`, `phpunit.xml.dist` ni `composer.lock`, plus `LICENSE`, les bibliothèques des quatre plateformes, `lib/memless.h` et `lib/SHA256SUMS`) sur `nascent-tech/memless-php`, tag `vX.Y.Z`, `main` du miroir poussé en force dessus. | Le hook GitHub met Packagist à jour ; `composer require nascent-tech/memless` fonctionne. |
 | 5 | **Module Go embarqué publié** | Système — la CI crée, hors de `main`, un commit qui ajoute `bindings/go/lib/<plateforme>/libmemless_capi.<ext>` pour les quatre plateformes, et pose le tag `bindings/go/vX.Y.Z` sur ce commit. | `go get github.com/nascent-tech/memless/bindings/go@vX.Y.Z` résout un module qui embarque sa bibliothèque. |
 | 6 | **Extraction Go réussie** | Système — au premier appel, si l'embarqué contient la bibliothèque de la plateforme courante, le pont l'extrait dans `os.UserCacheDir()/memless/<version>-<sha256 court>/`, vérifie son SHA-256 complet contre les octets embarqués avant tout `dlopen`, réécrit en cas d'écart. | Le fichier extrait dans le cache utilisateur ; un appel suivant réutilise le fichier déjà vérifié. |
 | 7 | **Publication conditionnelle sautée** | Système — *tant que* le propriétaire n'a pas créé ses comptes (organisation npm, compte Packagist, clé de déploiement), les jobs `publish-npm`/`publish-php` sont sautés sans faire échouer la CI. | La CI reste verte ; aucune tentative de publication sur un registre non prêt. |
@@ -167,6 +167,6 @@ autorité sur toute conception antérieure) :
 | D6 | **CI de publication.** `publish-go` toujours ; `publish-npm`/`publish-php` conditionnels aux variables de dépôt, sautés sans échec tant que le propriétaire n'a pas créé ses comptes. | Permissions minimales par job (`publish-go` : `contents: write` ; `publish-npm` : `id-token: write`, `contents: read` ; `publish-php` : `contents: read`), secrets exposés au seul job qui les utilise. |
 
 **Points de la conception non transcrits ici** : aucun — le contenu technique détaillé (contenu exact
-des workflows, code des ponts) revient au code, porté par la branche parallèle ; ce cadrage n'en garde
-que ce qui définit le besoin, le vocabulaire et les décisions au niveau produit, conformément à
-`§5.2` du brief (le choix technique appartient à l'architecture, pas au cadrage).
+des workflows, code des ponts) revient au code, livré par `feat/publish-registries` (0.2.0) ; ce cadrage
+n'en garde que ce qui définit le besoin, le vocabulaire et les décisions au niveau produit, conformément
+à `§5.2` du brief (le choix technique appartient à l'architecture, pas au cadrage).

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+### Ajouté
+
+- Each bridge installs with its language's own tool and brings the native library with it, with
+  nothing to download and no `MEMLESS_LIB` to set, on macOS (Apple silicon and Intel) and Linux with
+  glibc (x86_64 and aarch64): `npm install @nascent-tech/memless`, `composer require
+  nascent-tech/memless`, and `go get github.com/nascent-tech/memless/bindings/go@v0.2.0` or later.
+  npm installs only the platform package matching the machine; the Composer package carries the four
+  libraries and the C header; a Go program embeds only the library of the platform it is built for,
+  extracted once into the user cache directory and checked against its SHA-256 before every load.
+  The bundled Linux libraries need glibc 2.39 or later (Ubuntu 24.04 or later); elsewhere,
+  `MEMLESS_LIB` still points the bridge at a library built locally.
+- The release workflow publishes to npm, to Packagist (through the mirror repository
+  `nascent-tech/memless-php`) and to the Go module proxy, next to the GitHub release, which now also
+  carries `memless-lib-SHA256SUMS`. A manual run is a dry run by default: it builds and assembles every
+  package and prints what it would publish. `docs/PUBLISHING.md` describes the owner's one-time setup
+  and how to release.
+
+### Modifié
+
+- The Composer package is named `nascent-tech/memless` (it was `memless/php`).
+- The three bridges look for the library in a new shared order: `MEMLESS_LIB`, then the library the
+  package bundles for the current platform, then `target/release` and `target/debug` of a checked-out
+  workspace. The PHP bridge finds the C header the same way (`MEMLESS_HEADER`, then the bundled
+  `lib/memless.h`, then the workspace). When nothing is found, the error still says to set
+  `MEMLESS_LIB`.
+
 ## [0.1.1] — 2026-09-26
 
 ### Corrigé

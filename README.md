@@ -263,52 +263,67 @@ leftover temp file.
 
 ## Installation
 
-Every bridge loads the same native library — `libmemless_capi.dylib` (macOS)
-or `libmemless_capi.so` (Linux) — built from `crates/memless-capi`. Either:
+Install the bridge for your language with its own package manager. Each
+package brings the native library for your platform with it, so there is
+nothing to download or configure by hand:
 
-- **Build it from source** (needs a Rust toolchain):
+```sh
+npm install @nascent-tech/memless                              # Node.js 18 or later
+composer require nascent-tech/memless                          # PHP 8.1 or later, ffi extension
+go get github.com/nascent-tech/memless/bindings/go@vX.Y.Z      # Go 1.21 or later
+```
+
+The library is bundled for four platforms: macOS on Apple silicon
+(`darwin-arm64`) and on Intel (`darwin-x64`), and Linux with glibc on x86_64
+(`linux-x64-gnu`) and aarch64 (`linux-arm64-gnu`). The Linux libraries are
+built on Ubuntu 24.04 and need glibc 2.39 or later (Ubuntu 24.04 or later, or
+a distribution of the same age); on an older glibc, build the library locally
+and set `MEMLESS_LIB` (see below). How each package carries it:
+
+- **npm** — `@nascent-tech/memless` lists four platform packages
+  (`@nascent-tech/memless-darwin-arm64`, `-darwin-x64`, `-linux-x64-gnu`,
+  `-linux-arm64-gnu`) as optional dependencies; npm installs only the one that
+  matches your machine. See [`bindings/node/README.md`](bindings/node/README.md).
+- **Composer** — the package ships `lib/<platform>/` for the four platforms,
+  and the C header the FFI extension needs. See
+  [`bindings/php/README.md`](bindings/php/README.md).
+- **Go** — the module embeds the library of the platform you build for (and
+  only that one); on first use it is extracted once into your user cache
+  directory (`memless/<version>-<checksum>/`) and checked against its SHA-256
+  before every load. See [`bindings/go/README.md`](bindings/go/README.md).
+
+All three bridges look for the library in the same order, on the first call
+that needs it (never at import time):
+
+1. `MEMLESS_LIB`, if it is set — it must name an existing file, or the call
+   fails rather than falling back;
+2. the library the package bundles for the current platform;
+3. `target/release/`, then `target/debug/`, inside a checked-out workspace
+   (`.dylib` before `.so`).
+
+If none is found, the call fails with a message that tells you to set
+`MEMLESS_LIB`. `MEMLESS_LIB` loads arbitrary native code, like any FFI library
+path: only point it at a library you trust. The bridges require a library of
+ABI version 5.
+
+### Other platforms, or your own build
+
+On Linux with musl, which has no bundled library, on a glibc older than 2.39,
+or to use a library you built yourself, set `MEMLESS_LIB` to its path (Windows is not supported).
+Either:
+
+- **build it from source** (needs a Rust toolchain):
 
   ```sh
   cargo build --release -p memless-capi
   ```
 
-  which produces `target/release/libmemless_capi.{dylib,so}`; every bridge
-  finds it there on its own, with no configuration, inside a checked-out
-  workspace.
-
-- **Download a release archive** — `memless-capi-<version>-<target>.tar.gz`
-  from the project's GitHub Releases (see *Supported targets* below) — and
-  point each bridge at the extracted library with the `MEMLESS_LIB`
-  environment variable (an absolute path is safest).
-
-All three bridges look for the library in the same order, on the first call
-that needs it (never at import time): `MEMLESS_LIB` if it is set — it must
-name an existing file, or the call fails rather than falling back — then
-`target/release/`, then `target/debug/` inside the workspace (`.dylib` before
-`.so`). `MEMLESS_LIB` loads arbitrary native code, like any FFI library path:
-only point it at a library you trust. The bridges require a library of ABI
-version 5.
-
-Then get the bridge for your language (PHP 8.1 or later with the `ffi`
-extension, Go 1.21 or later, Node.js 18 or later). Memless is distributed
-**only through GitHub Releases** — none of the three bridges is published to
-npm, Packagist or crates.io:
-
-- **Go** — Go modules resolve straight from the tag, no separate registry
-  needed: `go get github.com/nascent-tech/memless/bindings/go@vX.Y.Z`, which
-  Go resolves from the repository tag `bindings/go/vX.Y.Z` (the module lives
-  in a subdirectory, so that tag must exist next to the release tag
-  `vX.Y.Z`). See
-  [`bindings/go/README.md`](bindings/go/README.md).
-- **PHP** — download `memless-php-<version>.zip` from the release, extract it
-  next to your project, and either add it as a Composer *path* repository
-  pointing at the extracted directory, or `require 'memless-php/src/...'`
-  directly (there is no vendor to install: the archive ships without one).
-  See [`bindings/php/README.md`](bindings/php/README.md).
-- **Node** — download the `nascent-tech-memless-<version>.tgz` tarball from
-  the release and install it as a local file:
-  `npm install ./nascent-tech-memless-<version>.tgz`. See
-  [`bindings/node/README.md`](bindings/node/README.md).
+  which produces `target/release/libmemless_capi.{dylib,so}`; inside a
+  checked-out workspace every bridge finds it there with no configuration;
+- or **download a release archive** — `memless-capi-<version>-<target>.tar.gz`
+  from the project's GitHub Releases, which also carry the checksums
+  (`SHA256SUMS`, and `memless-lib-SHA256SUMS` for the bundled libraries) — and
+  point `MEMLESS_LIB` at the extracted library (an absolute path is safest).
 
 ## Parity and running the tests
 
@@ -365,7 +380,11 @@ npm run typecheck --prefix bindings/node
 
 Memless is built and tested for four target families: `aarch64-apple-darwin`,
 `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu` and
-`aarch64-unknown-linux-gnu`. Windows and musl targets are not supported.
+`aarch64-unknown-linux-gnu`, which the packages call `darwin-arm64`,
+`darwin-x64`, `linux-x64-gnu` and `linux-arm64-gnu`. Windows and musl targets
+are not supported. How a release reaches npm, Packagist and the Go module
+proxy is described for maintainers in
+[`docs/PUBLISHING.md`](docs/PUBLISHING.md).
 
 ## License
 

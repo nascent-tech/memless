@@ -1,0 +1,20 @@
+{
+  "name": "@nascent-tech/memless-darwin-x64",
+  "description": "The memless C library for macOS on Intel (x86_64-apple-darwin), loaded by @nascent-tech/memless.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nascent-tech/memless.git",
+    "directory": "bindings/node/platforms/darwin-x64"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "libmemless_capi.dylib"
+  ],
+  "preferUnplugged": true
+}

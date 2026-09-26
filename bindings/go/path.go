@@ -7,11 +7,10 @@ import (
 	"runtime"
 )
 
+const notFoundMessage = "memless cdylib not found: none bundled with this package, none under target/; set MEMLESS_LIB"
+
 func libraryPath() (string, error) {
-	if env := os.Getenv("MEMLESS_LIB"); env != "" {
-		return envLibrary(env)
-	}
-	return searchLibrary()
+	return resolveLibrary(currentPlan())
 }
 
 func envLibrary(env string) (string, error) {
@@ -21,10 +20,10 @@ func envLibrary(env string) (string, error) {
 	return env, nil
 }
 
-func searchLibrary() (string, error) {
-	found := existingLibrary(workspaceRoot())
+func searchLibrary(root string) (string, error) {
+	found := existingLibrary(root)
 	if found == "" {
-		return "", errors.New("memless cdylib not found; set MEMLESS_LIB")
+		return "", errors.New(notFoundMessage)
 	}
 	return found, nil
 }

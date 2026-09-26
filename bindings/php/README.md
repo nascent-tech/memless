@@ -13,13 +13,22 @@ guessing rules and the supported SQL subset.
 
 ## Install
 
-Memless is distributed only through GitHub Releases, not Packagist. Download
-`memless-php-<version>.zip` from the release, extract it, and either:
+```sh
+composer require nascent-tech/memless
+```
 
-- point a Composer *path* repository at the extracted directory, so
-  `Memless\` autoloads through Composer's own autoloader; or
-- `require` the classes under its `src/` directly — the archive ships without
-  a `vendor/` directory, since it has no runtime dependency besides `ext-ffi`.
+That is all: the package carries the native library under `lib/<platform>/`
+for macOS (`darwin-arm64`, `darwin-x64`) and Linux with glibc
+(`linux-x64-gnu`, `linux-arm64-gnu`), their `lib/SHA256SUMS`, and the C
+header in `lib/memless.h`, so there is nothing to download or configure.
+Elsewhere, see [The cdylib](#the-cdylib).
+
+Packagist needs `composer.json` at the root of a repository, so the package
+is published from the mirror repository `nascent-tech/memless-php`, which the
+release workflow fills with this directory and the libraries at each version.
+Versions before 0.2.0 were not on Packagist: the package was called
+`memless/php` and shipped only as `memless-php-<version>.zip` on the GitHub
+release, without the library.
 
 ## Surface
 
@@ -74,19 +83,32 @@ $db->release();
 
 The bridge loads the native library on the first call that needs it, never
 at include time, and looks for it in the same order as the Go and Node
-bridges: `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
-existing file, then, inside a checked-out workspace, `target/release/`, then
-`target/debug/` (`.dylib` before `.so`). The library must speak ABI version 5.
-Build it first:
+bridges:
+
+1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
+   existing file;
+2. `lib/<platform>/libmemless_capi.<ext>` of this package, the platform coming
+   from `PHP_OS_FAMILY` and `php_uname('m')` (none on Linux with musl, whose
+   `/usr/bin/ldd` says so);
+3. inside a checked-out workspace, `target/release/`, then `target/debug/`
+   (`.dylib` before `.so`).
+
+If `/usr/bin/ldd` is absent (a minimal musl image), the bridge assumes glibc
+and the load fails: set `MEMLESS_LIB`. The bundled Linux libraries need glibc
+2.39 or later (Ubuntu 24.04 or later); on an older glibc, set `MEMLESS_LIB` to
+a library built locally. When nothing is found, the error says to set
+`MEMLESS_LIB`. The library must speak ABI version 5. The C header (`memless.h`) is found the same way:
+`MEMLESS_HEADER`, then `lib/memless.h` of this package, then
+`crates/memless-capi/include/memless.h` of the workspace. On another
+platform, or with your own build, set `MEMLESS_LIB`:
 
 ```sh
 cargo build --release -p memless-capi
+export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
 `MEMLESS_LIB` loads arbitrary native code, like any FFI library path — only
-point it at a library you trust. The C header (`memless.h`) is found the same
-way through `MEMLESS_HEADER`, defaulting to
-`crates/memless-capi/include/memless.h`.
+point it at a library you trust.
 
 ## Running the tests
 

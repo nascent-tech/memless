@@ -33,10 +33,10 @@ implémentées. La colonne de droite dit ce que chacune changerait dans **cette*
 | Budget YAML saturé — le « YAML bomb » n'est pas borné (§10.5, `options.rs`) | **moyen** | un fichier démesuré ou à alias profonds peut épuiser la mémoire au chargement ; assumé parce que le fichier vient de la développeuse elle-même, jamais d'une source non fiable |
 | Coût de la réécriture complète du fichier, non mesuré au-delà des fixtures du MVP (§17.2 du brief) | **moyen** | si les fixtures grossissent, la réécriture peut devenir le geste le plus lent de la suite ; à trancher par le banc de mesure |
 | Parité réelle du pont PHP sur toutes les plateformes (§17.1 du brief) | **moyen** | PHP pourrait rester citoyen de seconde zone (FFI non activé, comportement divergent) ; prouvé par le banc de parité multi-OS, en CI |
-| Résolution du binaire natif par `MEMLESS_LIB`/`target/` seulement | **faible** | pas de paquet autonome par plateforme : chaque pont doit trouver ou recevoir le chemin de la `cdylib` lui-même, plutôt que la recevoir embarquée dans son paquet — **révisé par le palier 6** (§12.3 Q6) : les trois ponts embarquent désormais leur bibliothèque de plateforme, `MEMLESS_LIB`/`target/` restant les étapes de secours |
 | `serde-saphyr` à mainteneur unique (§7) | faible | une dépendance critique repose sur une seule personne |
 | Bibliothèque embarquée non signée (npm, miroir PHP, module Go) | **faible** | aucune signature cryptographique sur la bibliothèque native distribuée ; atténué par le SHA-256 complet vérifié côté Go avant tout `dlopen`, par l'intégrité du paquet garantie par npm à l'installation, et par le recoupement possible avec `SHA256SUMS` déjà publié en Release GitHub |
 | Miroir PHP qui grossit d'environ 20 Mo par version | **faible** | chaque tag ajoute un commit orphelin portant les quatre bibliothèques natives sur `nascent-tech/memless-php` ; le dépôt miroir grossit sans purge, aucune limite fixée par ce palier |
+| glibc minimale non figée | **moyen** | les bibliothèques Linux sont construites sur ubuntu-24.04 (glibc 2.39) ; sur une distribution plus ancienne le chargement peut échouer — correctif ultérieur : construire dans un conteneur à glibc ancienne ou par `cargo zigbuild` |
 
 ### 12.3 Questions ouvertes
 
@@ -64,21 +64,26 @@ humaine datée :
    reproduit ces builds et produit les artefacts de la question 6. Le run vert de `ci.yml` sur chaque
    famille est la preuve ; sa ligne (date, famille, révision, lien du run, verdict) est recopiée dans
    `.charpente/releves/parite.md` par le fondateur au moment du tag — pas par un step de CI.
-6. **Distribution du binaire natif — RÉVISÉ (2026-09-26, palier 6).** Remplace la décision du palier 5
-   ci-dessous. **GitHub Releases est conservé** — quatre archives
-   `memless-capi-<version>-<cible>.tar.gz` (la cdylib + `memless.h`) et un fichier `SHA256SUMS`
-   couvrant tous les assets — **et les registres natifs de chaque langage s'y ajoutent** : **npm**, un
-   paquet principal `@nascent-tech/memless` et quatre paquets de plateforme en
-   `optionalDependencies` ; **Packagist**, par un dépôt **miroir** `nascent-tech/memless-php`
-   (Packagist exige un `composer.json` à la racine d'un dépôt, que le monorepo n'offre pas) alimenté
-   par la CI à chaque tag ; **le proxy Go**, par un module qui embarque sa bibliothèque native
-   (`//go:embed`) dans un commit posé hors de `main`, tag `bindings/go/vX.Y.Z`. La résolution de la
-   bibliothèque dans les trois ponts devient : `MEMLESS_LIB` (prioritaire, erreur claire s'il désigne
-   un fichier absent), puis la **bibliothèque embarquée par le paquet** de la plateforme courante,
+6. **Distribution du binaire natif — TRANCHÉ, révisé au palier 6 (2026-09-26).** Remplace la décision
+   du palier 5 ci-dessous. **GitHub Releases est conservé** — quatre archives
+   `memless-capi-<version>-<cible>.tar.gz` (la cdylib + `memless.h`),
+   `nascent-tech-memless-<version>.tgz` (le paquet npm publié), `memless-php-<version>.zip`,
+   `memless-lib-SHA256SUMS` (les bibliothèques embarquées) et un fichier `SHA256SUMS` couvrant tous
+   les assets — **et les registres natifs de chaque langage s'y ajoutent** : **npm**, un paquet
+   principal `@nascent-tech/memless` et quatre paquets de plateforme en `optionalDependencies`
+   exactes, ajoutées par la CI au moment de publier ; **Packagist**, par un dépôt **miroir**
+   `nascent-tech/memless-php` (Packagist exige un `composer.json` à la racine d'un dépôt, que le
+   monorepo n'offre pas) alimenté par la CI à chaque tag ; **le proxy Go**, par un module qui embarque
+   sa bibliothèque native (`//go:embed`) dans un commit posé hors de `main`, tag `bindings/go/vX.Y.Z` ;
+   il n'embarque que la plateforme compilée et l'extrait au cache utilisateur, vérifié par SHA-256
+   avant chaque chargement. La résolution de la bibliothèque dans les trois ponts devient :
+   `MEMLESS_LIB` (prioritaire, erreur claire s'il désigne un fichier absent), puis la **bibliothèque embarquée par le paquet** de la plateforme courante,
    puis `target/release` / `target/debug` du workspace (développement) — identique dans les trois
    ponts, aucune règle métier n'entre dans un pont. Linux musl et Windows n'ont pas de bibliothèque
    embarquée : ils retombent à `target/`, puis à l'erreur claire citant `MEMLESS_LIB`. Cadrage :
-   `.charpente/cadrage/2026-09-26-palier-6-publier.md`.
+   `.charpente/cadrage/2026-09-26-palier-6-publier.md`. La publication npm et Packagist attend les
+   comptes du propriétaire (variables `NPM_PUBLISH`, `PHP_MIRROR_PUBLISH`) ; les étapes sont dans
+   `docs/PUBLISHING.md`.
 
    *Ce que cela remplace* — décision du palier 5 : « Aucun registre externe : GitHub Releases sur tag
    `vX.Y.Z` — quatre archives `memless-capi-<version>-<cible>.tar.gz` (la cdylib + `memless.h`), un

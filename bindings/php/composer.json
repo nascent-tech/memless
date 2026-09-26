@@ -1,6 +1,8 @@
 {
-    "name": "memless/php",
+    "name": "nascent-tech/memless",
     "description": "PHP FFI bridge to the memless C ABI",
+    "keywords": ["sql", "yaml", "ffi", "in-memory"],
+    "homepage": "https://github.com/nascent-tech/memless",
     "type": "library",
     "license": "MIT",
     "require": {
