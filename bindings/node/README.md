@@ -4,9 +4,9 @@ Query and change a YAML file with SQL, from Node.js. Memless loads the file
 into memory, runs your SQL against it and writes every accepted change back to
 the file — no schema, no server. It is made for test fixtures and demos.
 
-This guide covers the Node.js API. The file format, the supported SQL and the
-behaviour shared by all languages are described in the
-[project README](https://github.com/nascent-tech/memless#readme).
+Everything you need to use it from Node.js is on this page. The
+[project README](https://github.com/nascent-tech/memless#readme) has more
+detail on the file format and on transactions.
 
 ## Install
 
@@ -46,6 +46,46 @@ try {
 ```
 
 With ES modules: `import { load } from '@nascent-tech/memless';`.
+
+## Writing the YAML file
+
+Each top-level key is a table, each table is a list of rows, and each row is a
+map of column names to values. Memless reads everything else from the data:
+
+| Rule | What Memless expects |
+| --- | --- |
+| Row identity | Every row has an `id`, text or integer, unique within its table. `5` and `"5"` are different ids. |
+| Relations | A column named `<name>_id` points at the `id` of the table `<name>s`, when it exists: `user_id` → `users`. The plural is always `<name>` + `s` (`category_id` → `categorys`). Every value must name an existing row. |
+| Values | Text, integer, decimal or boolean. Lists and maps inside a row are refused. |
+| Missing values | Any column but `id` may be left out; `null` (or `~`) counts as missing and reads back as `null`. |
+| Mixed types | Allowed in a column, but sorting on it or summing it is refused. |
+
+## Supported SQL
+
+| Statement | Supported form |
+| --- | --- |
+| `SELECT` | `SELECT <columns> \| * FROM <table>`, with optional `WHERE`, `ORDER BY` and one `JOIN` |
+| `WHERE` | `=`, `<>`, `<`, `<=`, `>`, `>=`, `IS NULL`, `IS NOT NULL`, with `AND`, `OR` and parentheses |
+| `JOIN` | One `INNER JOIN <table> ON <a>.<name>_id = <b>.id`; every column is then written `table.column` |
+| `ORDER BY` | One or more columns, `ASC` (default) or `DESC`; ties keep the file order, missing values come last |
+| Aggregates | `SELECT COUNT(*)` or `SELECT SUM(<column>)`, alone in the select list |
+| `INSERT` | `INSERT INTO <table> (<columns>) VALUES (<values>)` |
+| `UPDATE` / `DELETE` | `UPDATE <table> SET <column> = <value>, … [WHERE …]`, `DELETE FROM <table> [WHERE …]` |
+
+Anything else — `GROUP BY`, `LIMIT`, several joins, `LIKE`, `IN`, subqueries,
+`CREATE`… — is refused with `<construct> is outside the supported SQL subset`.
+
+## Good to know
+
+- **Writes are saved at once.** Outside a transaction, each accepted write
+  rewrites the file before the call returns. The file is replaced atomically
+  through a temporary `.<name>.memless-tmp` next to it: add `.*.memless-tmp`
+  to your `.gitignore`.
+- **In tests, load a copy of your fixture**, or wrap the test in a
+  transaction that you roll back, so that every test starts from the same
+  data.
+- **One instance per file.** Memless does not coordinate writers: do not
+  change the same file from two instances or two processes at once.
 
 ## API
 
