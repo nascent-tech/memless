@@ -49,9 +49,13 @@ les lignes de divergence. Le run vert de `ci.yml` sur chaque famille est la preu
 famille, révision, lien du run, verdict) est recopiée ici par le fondateur au moment du tag — pas
 par un step de CI.
 
-| Date | Famille (OS × processeur) | Révision (git) | Verdict | Écart(s) constaté(s) |
-|---|---|---|---|---|
-| 2026-09-26 | Darwin × arm64 | 5d3464c | all fixtures, queries, writes, transactions and reloads agree on all three bridges | aucun |
+| Date | Famille (OS × processeur) | Révision (git) | Lien du run | Verdict | Écart(s) constaté(s) |
+|---|---|---|---|---|---|
+| 2026-09-26 | Darwin × arm64 (poste du fondateur) | 5d3464c | exécution locale | all fixtures, queries, writes, transactions and reloads agree on all three bridges | aucun |
+| 2026-09-26 | aarch64-apple-darwin | 85c6f82 | [run 36236103212](https://github.com/nascent-tech/memless/actions/runs/36236103212) | all fixtures, queries, writes, transactions and reloads agree on all three bridges | aucun |
+| 2026-09-26 | x86_64-apple-darwin | 85c6f82 | [run 36236103212](https://github.com/nascent-tech/memless/actions/runs/36236103212) | all fixtures, queries, writes, transactions and reloads agree on all three bridges | aucun |
+| 2026-09-26 | x86_64-unknown-linux-gnu | 85c6f82 | [run 36236103212](https://github.com/nascent-tech/memless/actions/runs/36236103212) | all fixtures, queries, writes, transactions and reloads agree on all three bridges | aucun |
+| 2026-09-26 | aarch64-unknown-linux-gnu | 85c6f82 | [run 36236103212](https://github.com/nascent-tech/memless/actions/runs/36236103212) | all fixtures, queries, writes, transactions and reloads agree on all three bridges | aucun |
 
 ## Séances du §7 bis — par développeuse
 
@@ -67,7 +71,8 @@ changées, et lit le même message de refus dans les trois. Une entrée par dév
 
 ## Verdict §17.1
 
-- **Statut :** ouvert.
+- **Statut :** ouvert — premier volet tenu : zéro écart sur les quatre familles retenues
+  (run 36236103212, révision 85c6f82, 2026-09-26) ; reste le second volet, les trois séances du §7 bis.
 - **Ferme quand :** zéro écart sur chaque famille retenue **et** les trois séances du §7 bis
   accomplies sans écart non corrigeable dans le cœur.
 - **Bascule quand :** un seul écart non corrigeable dans le cœur, ou un geste du §1 inaccessible

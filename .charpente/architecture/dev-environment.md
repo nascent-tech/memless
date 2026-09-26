@@ -16,7 +16,7 @@ Cette section décrit l'environnement **constaté sur le code**. `.charpente.jso
 - **Rust** (édition 2021, toolchain stable) avec `cargo`, `rustfmt`, `clippy`.
 - **Node.js** ≥ 18, pour bâtir et tester le pont Node (`koffi`).
 - **Go** 1.21, pour le pont `purego`.
-- **PHP** ≥ 8.1 (testé 8.3 en CI) avec l'**extension FFI activée**, pour le pont PHP — à activer
+- **PHP** ≥ 8.1 (testé en CI : 8.3, et 8.5 sur macOS Intel où Homebrew ne fournit plus de PHP précompilé) avec l'**extension FFI activée**, pour le pont PHP — à activer
   explicitement sur les distributions où elle ne l'est pas par défaut (§17.1 du brief).
 - Pas de `cbindgen` : l'en-tête C (`crates/memless-capi/include/memless.h`) est écrit à la main.
 
