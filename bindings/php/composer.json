@@ -3,6 +3,11 @@
     "description": "PHP FFI bridge to the memless C ABI",
     "keywords": ["sql", "yaml", "ffi", "in-memory"],
     "homepage": "https://github.com/nascent-tech/memless",
+    "support": {
+        "issues": "https://github.com/nascent-tech/memless/issues",
+        "source": "https://github.com/nascent-tech/memless/tree/main/bindings/php",
+        "security": "https://github.com/nascent-tech/memless/security/policy"
+    },
     "type": "library",
     "license": "MIT",
     "require": {

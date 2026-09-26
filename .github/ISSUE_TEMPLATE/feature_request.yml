@@ -1,0 +1,46 @@
+name: Feature request
+description: A change of behaviour, or something memless should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        memless is deliberately small: it refuses what it does not understand, and it is built for test fixtures and demos. Describing the problem you hit, rather than a solution, makes the discussion easier.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you were trying to do, and where memless got in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: The behaviour you would like, with a YAML file and SQL if it helps.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Guessing rules (types, identities, relations)
+        - SQL subset
+        - Transactions, reload, file rewrite
+        - Bridge API (PHP, Go, Node.js)
+        - Installation and packaging
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this myself, after we agree on it.

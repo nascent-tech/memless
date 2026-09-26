@@ -117,3 +117,15 @@ point it at a library you trust.
 composer install
 vendor/bin/phpunit
 ```
+
+## Contributing
+
+This bridge is developed in [`bindings/php`](https://github.com/nascent-tech/memless/tree/main/bindings/php)
+of [nascent-tech/memless](https://github.com/nascent-tech/memless), next to
+the Rust core, the two other bridges and the parity harness that keeps the
+three in agreement. The repository `nascent-tech/memless-php` is a mirror
+that the release workflow rewrites at each version: open issues and pull
+requests on [nascent-tech/memless](https://github.com/nascent-tech/memless/issues/new/choose),
+and read its [contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
+first. Security issues go to its
+[security policy](https://github.com/nascent-tech/memless/security/policy).
