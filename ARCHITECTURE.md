@@ -7,9 +7,11 @@
 *Bloc généré — il se retisse à chaque écriture, ne l'édite pas à la main.*
 <!-- /charpente-navigation -->
 
-> **Statut : constaté sur le code.** Les paliers 1 à 5 sont livrés ; toute divergence entre ce document
-> et le code est un défaut du document, à corriger dans le document. **Convention de renvoi :**
-> « §X du brief » / « décision N du brief » pointent vers le brief ; un « §X » nu, vers ce document.
+> **Statut : constaté sur le code.** Les paliers 1 à 5 sont livrés (0.1.1) ; le palier 6 (« Publier sur
+> les registres », 0.2.0) est décrit ici depuis sa conception validée, le code correspondant arrivant
+> par une branche parallèle — toute divergence entre ce document et le code est un défaut du document,
+> à corriger dans le document. **Convention de renvoi :** « §X du brief » / « décision N du brief »
+> pointent vers le brief ; un « §X » nu, vers ce document.
 
 ## §1. Le produit
 
@@ -33,7 +35,10 @@ cœur en **Rust** ; l'analyse SQL est
 confiée à `sqlparser` (0.54), l'exécution est écrite dans le domaine ; chaque langage appelant le cœur
 par la voie la plus directe qu'il offre (`koffi`, FFI dynamique, pour Node, `FFI` intégré pour PHP,
 `purego` pour Go). Memless est **gratuit et ouvert** sous licence MIT (décision 1 du brief) ; il est
-publié sur GitHub (`nascent-tech/memless`).
+publié sur GitHub (`nascent-tech/memless`), et, depuis le palier 6, sur les registres natifs de chaque
+langage — **npm**, **Packagist** (par un dépôt miroir), **le proxy Go** — en plus de GitHub Releases,
+pour que chaque pont s'installe par l'outil natif de son langage sans bibliothèque à télécharger à la
+main.
 
 ## §2. Structure du projet
 
@@ -141,8 +146,10 @@ le banc de parité comme test de première classe.
 ## §12. Vision et décisions
 
 Feuille de route (serveur, cascade, API native, verrou inter-processus, production), dettes assumées
-(concurrence, sûreté FFI, budget YAML saturé, coût de réécriture, parité PHP, résolution du binaire) et
-les huit questions d'architecture, toutes tranchées (§12.3).
+(concurrence, sûreté FFI, budget YAML saturé, coût de réécriture, parité PHP, résolution du binaire,
+bibliothèque embarquée non signée, miroir PHP qui grossit) et les huit questions d'architecture, toutes
+tranchées (§12.3) — la question 6 (distribution) révisée au palier 6 : GitHub Releases conservé, les
+registres natifs de chaque langage s'y ajoutent.
 
 → [Lire le détail](.charpente/architecture/roadmap.md)
 

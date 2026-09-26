@@ -81,7 +81,34 @@ du brief). Memless ne « nettoie » pas la requête elle-même — le texte vien
 confiance ; si un test construit du SQL depuis une entrée externe, l'assainir est la responsabilité de
 l'appelant.
 
-### 10.6 Audit
+### 10.6 Publication (depuis le palier 6)
+
+La publication sur les registres externes ouvre une surface qui n'existait pas avant le palier 6 : des
+identités de dépôt et des jetons, à traiter avec le même soin que le reste.
+
+- **Extraction dans le cache utilisateur (Go)** : la bibliothèque embarquée par `//go:embed` est
+  extraite une fois dans `os.UserCacheDir()/memless/<version>-<sha256 court>/`, écrite par un fichier
+  temporaire puis `rename` (jamais un fichier partiellement écrit visible du chargeur). **Avant tout
+  `dlopen`**, le SHA-256 complet du fichier présent dans le cache est comparé aux octets embarqués dans
+  le binaire ; un écart réécrit le fichier avant de l'ouvrir — le cache ne peut pas servir une
+  bibliothèque altérée sans que la vérification le détecte.
+- **Vérification SHA-256** plus largement : `SHA256SUMS`, déjà publié en Release GitHub depuis le
+  palier 5, reste le point de recoupement pour qui veut vérifier une bibliothèque obtenue par un
+  registre — npm garantit par ailleurs l'intégrité de son propre paquet à l'installation.
+- **Clé de déploiement limitée au miroir** : la CI pousse le miroir `nascent-tech/memless-php` par une
+  **clé de déploiement SSH en écriture**, dont la portée est ce seul dépôt — jamais une clé ou un
+  jeton à portée du dépôt principal `nascent-tech/memless`. Le secret (`PHP_MIRROR_DEPLOY_KEY`) n'est
+  exposé qu'au job `publish-php`.
+- **Jeton npm granulaire temporaire, puis Trusted Publishing** : la toute première publication npm
+  s'authentifie par un jeton **granulaire** (portée publish sur `@nascent-tech/*`, Bypass 2FA, ≤ 90
+  jours, secret `NPM_TOKEN`), parce que Trusted Publishing ne peut pas amorcer un paquet qui n'existe
+  pas encore sur npm. Une fois la première version publiée, le propriétaire crée les Trusted
+  Publishers (OIDC, `id-token: write`) et supprime le jeton : les publications suivantes n'exposent
+  plus aucun secret npm de longue durée. Les jobs de publication ont des permissions minimales et
+  cloisonnées : `publish-go` (`contents: write`), `publish-npm` (`id-token: write`, `contents: read`),
+  `publish-php` (`contents: read`) — chaque secret n'est visible que du job qui l'utilise.
+
+### 10.7 Audit
 
 Le journal d'audit **des données** est l'historique Git du fichier (§9.1 du brief) : il montre ce qui
 a changé, ligne par ligne, horodaté par le commit. Il ne dit **pas qui a déclenché** le changement —
