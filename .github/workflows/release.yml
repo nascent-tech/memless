@@ -39,8 +39,13 @@ jobs:
           name="memless-capi-${version}-${{ matrix.target }}"
           staging="dist/${name}"
           mkdir -p "$staging"
-          shopt -s nullglob
-          libs=(target/${{ matrix.target }}/release/libmemless_capi.dylib target/${{ matrix.target }}/release/libmemless_capi.so)
+          libs=()
+          for ext in dylib so; do
+            candidate="target/${{ matrix.target }}/release/libmemless_capi.${ext}"
+            if [ -f "$candidate" ]; then
+              libs+=("$candidate")
+            fi
+          done
           if [ "${#libs[@]}" -eq 0 ]; then
             echo "no cdylib produced under target/${{ matrix.target }}/release" >&2
             exit 1
