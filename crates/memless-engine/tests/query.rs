@@ -87,3 +87,36 @@ fn an_unknown_table_is_a_query_refusal() {
 fn an_out_of_subset_query_is_a_query_refusal() {
     assert!(matches!(query(parse, &shop(), "SELECT * FROM users LIMIT 1"), Err(Refusal::Query(_))));
 }
+
+fn first_cells(sql: &str) -> Vec<Option<Scalar>> {
+    let rows = query(parse, &shop(), sql).unwrap();
+    rows.rows.into_iter().map(|row| row[0].clone()).collect()
+}
+
+fn text(value: &str) -> Option<Scalar> {
+    Some(Scalar::Text(value.to_string()))
+}
+
+#[test]
+fn orders_rows_through_sql() {
+    assert_eq!(first_cells("SELECT id FROM wallets ORDER BY balance"), [text("w2"), text("w1")]);
+    assert_eq!(first_cells("SELECT id FROM wallets ORDER BY balance DESC"), [text("w1"), text("w2")]);
+}
+
+#[test]
+fn orders_a_join_on_a_qualified_column() {
+    let sql = "SELECT users.role FROM wallets JOIN users ON wallets.user_id = users.id ORDER BY users.role DESC";
+    assert_eq!(first_cells(sql), [text("USER"), text("ADMIN")]);
+}
+
+#[test]
+fn an_unknown_order_column_is_refused_by_name() {
+    let refusal = query(parse, &shop(), "SELECT * FROM users ORDER BY ghost").unwrap_err();
+    assert_eq!(refusal.to_string(), "no column \"ghost\" in table \"users\"");
+}
+
+#[test]
+fn ordering_mixed_types_is_refused() {
+    let refusal = query(parse, &trap(), "SELECT * FROM users ORDER BY id").unwrap_err();
+    assert_eq!(refusal.to_string(), "cannot order by \"id\" of \"users\": row 5 and row \"5\" differ in type");
+}

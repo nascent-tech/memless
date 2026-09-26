@@ -7,6 +7,7 @@ use sqlparser::ast::Query;
 
 pub(crate) fn lower_query(query: Box<Query>) -> Result<Select, QueryRefusal> {
     reject_query_tail(&query)?;
-    let select = select_of(*query)?;
-    lower_select(&select)
+    let Query { body, order_by, .. } = *query;
+    let select = select_of(*body)?;
+    lower_select(&select, &order_by)
 }

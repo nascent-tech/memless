@@ -3,9 +3,6 @@ use memless_domain::QueryRefusal;
 use sqlparser::ast::Query;
 
 pub(crate) fn reject_paging(query: &Query) -> Result<(), QueryRefusal> {
-    if query.order_by.is_some() {
-        return Err(outside("ORDER BY"));
-    }
     if query.limit.is_some() || !query.limit_by.is_empty() {
         return Err(outside("LIMIT"));
     }

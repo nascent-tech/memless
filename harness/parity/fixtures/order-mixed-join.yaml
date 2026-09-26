@@ -1,0 +1,14 @@
+users:
+  - id: 1
+    role: ADMIN
+  - id: 2
+    role: 7
+  - id: 3
+    role: USER
+wallets:
+  - id: w1
+    user_id: 3
+  - id: w2
+    user_id: 1
+  - id: w3
+    user_id: 2

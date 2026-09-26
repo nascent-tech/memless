@@ -59,11 +59,11 @@ fn qual(table: &str, name: &str) -> ColumnRef {
 }
 
 fn all(from: &str) -> Select {
-    Select { items: Items::All, from: from.to_string(), join: None, filter: None }
+    Select { items: Items::All, from: from.to_string(), join: None, filter: None, order: Vec::new() }
 }
 
 fn filtered(from: &str, filter: Filter) -> Select {
-    Select { items: Items::All, from: from.to_string(), join: None, filter: Some(filter) }
+    Select { items: Items::All, from: from.to_string(), join: None, filter: Some(filter), order: Vec::new() }
 }
 
 fn compare(column: ColumnRef, op: Op, literal: Scalar) -> Filter {
@@ -121,6 +121,7 @@ fn joins_by_guessed_relation() {
         from: "wallets".to_string(),
         join: Some(wallets_join_users()),
         filter: None,
+        order: Vec::new(),
     };
     let rows = shop().select(&query).unwrap();
     assert_eq!(rows.rows.len(), 2);
@@ -134,6 +135,7 @@ fn join_matches_the_same_type_id_only() {
         from: "wallets".to_string(),
         join: Some(wallets_join_users()),
         filter: None,
+        order: Vec::new(),
     };
     let rows = trap().select(&query).unwrap();
     assert_eq!(rows.rows.len(), 1);
@@ -147,6 +149,7 @@ fn counts_and_sums_over_retained_rows() {
         from: "wallets".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     let rows = shop().select(&query).unwrap();
     assert_eq!(rows.rows[0], vec![Some(Scalar::Integer(2)), Some(Scalar::Integer(150))]);
@@ -167,6 +170,7 @@ fn sum_over_no_present_value_is_absent() {
         from: "t".to_string(),
         join: None,
         filter: Some(compare(col("id"), Op::Eq, Scalar::Integer(2))),
+        order: Vec::new(),
     };
     assert_eq!(base.select(&query).unwrap().rows[0], vec![None]);
 }
@@ -215,6 +219,7 @@ fn join_from_the_id_side_keeps_joined_file_order() {
         from: "users".to_string(),
         join: Some(Join { table: "wallets".to_string(), left: qual("wallets", "user_id"), right: qual("users", "id") }),
         filter: None,
+        order: Vec::new(),
     };
     let rows = base.select(&query).unwrap();
     assert_eq!(rows.rows.len(), 2);
@@ -240,6 +245,7 @@ fn join_drops_rows_with_absent_relation() {
         from: "wallets".to_string(),
         join: Some(wallets_join_users()),
         filter: None,
+        order: Vec::new(),
     };
     assert_eq!(base.select(&query).unwrap().rows.len(), 1);
 }
@@ -259,6 +265,7 @@ fn sum_of_mixed_number_types_names_the_second_type_row() {
         from: "t".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     let error = base.select(&query).unwrap_err();
     assert_eq!(error.to_string(), "cannot sum \"v\" of \"t\" at row 2");
@@ -279,6 +286,7 @@ fn count_column_ignores_absent_values() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     assert_eq!(base.select(&query).unwrap().rows[0], vec![Some(Scalar::Integer(1))]);
 }
@@ -295,6 +303,7 @@ fn refuses_unknown_qualifier() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     assert!(matches!(shop().select(&query), Err(QueryRefusal::UnknownTable { .. })));
 }
@@ -306,6 +315,7 @@ fn refuses_unknown_column() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     assert!(matches!(shop().select(&query), Err(QueryRefusal::UnknownColumn { .. })));
 }
@@ -321,6 +331,7 @@ fn refuses_join_that_is_not_a_relation() {
             right: qual("users", "id"),
         }),
         filter: None,
+        order: Vec::new(),
     };
     assert!(matches!(shop().select(&query), Err(QueryRefusal::JoinNotRelation { .. })));
 }
@@ -332,6 +343,7 @@ fn refuses_sum_of_text() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     let error = shop().select(&query).unwrap_err();
     assert_eq!(error.to_string(), "cannot sum \"role\" of \"users\" at row 1");
@@ -352,6 +364,7 @@ fn refuses_sum_overflow() {
         from: "nums".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     assert!(matches!(base.select(&query), Err(QueryRefusal::SumOverflow { .. })));
 }
@@ -363,6 +376,7 @@ fn refuses_two_identical_output_columns() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     let refusal = shop().select(&query).unwrap_err();
     assert!(matches!(refusal, QueryRefusal::OutsideSubset { .. }));
@@ -376,6 +390,7 @@ fn refuses_a_dropped_qualifier_that_duplicates_a_header() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     assert!(matches!(shop().select(&query), Err(QueryRefusal::OutsideSubset { .. })));
 }
@@ -387,6 +402,7 @@ fn refuses_two_identical_aggregate_headers() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     assert!(matches!(shop().select(&query), Err(QueryRefusal::OutsideSubset { .. })));
 }
@@ -398,6 +414,7 @@ fn accepts_distinct_column_headers() {
         from: "users".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     let result = shop().select(&query).unwrap();
     assert_eq!(result.columns, vec!["id".to_string(), "role".to_string()]);
@@ -410,6 +427,7 @@ fn accepts_distinct_aggregate_headers() {
         from: "wallets".to_string(),
         join: None,
         filter: None,
+        order: Vec::new(),
     };
     let result = shop().select(&query).unwrap();
     assert_eq!(result.columns, vec!["COUNT(*)".to_string(), "SUM(balance)".to_string()]);
