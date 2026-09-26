@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/transaction.php';
+require __DIR__ . '/reload.php';
 
 use Memless\Instance;
 use Memless\MemlessRefusal;
@@ -205,6 +206,7 @@ function dispatchMode(string $path, string $sql, string $mode): string
         'write-disk' => writeDiskOutcome($path, $sql),
         'transaction' => transactionOutcome($path, $sql),
         'transaction-disk' => transactionDiskOutcome($path, $sql),
+        'reload' => reloadOutcome($path, $sql),
         default => '',
     };
 }

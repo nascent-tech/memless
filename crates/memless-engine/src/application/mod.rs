@@ -9,6 +9,7 @@ pub mod load;
 mod open;
 mod persist;
 pub mod query;
+pub mod reload;
 mod reopen;
 pub mod replace_file;
 mod run_write;

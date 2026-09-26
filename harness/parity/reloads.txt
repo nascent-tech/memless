@@ -1,0 +1,16 @@
+# One reload scenario per line: <fixture><TAB><scenario>. Each scenario is a
+# fixed script the driver runs on start.yaml (users id "01H7B2", name "Ada"):
+# restore  - UPDATE, the original bytes written back externally, reload, then
+#            a SELECT reading the restored value.
+# open     - BEGIN, a refused reload, then an UPDATE and a SELECT on the
+#            transaction that stays open and usable, ROLLBACK.
+# broken   - the file made incoherent, reload refused with the structure
+#            message, a SELECT reading the old state.
+# missing  - the file deleted, reload refused naming the path, a SELECT
+#            reading the old state.
+# Every line's outcome ends in sha256:<hex|-> and residue:<yes|no>, like
+# transactions.txt.
+start.yaml	restore
+start.yaml	open
+start.yaml	broken
+start.yaml	missing

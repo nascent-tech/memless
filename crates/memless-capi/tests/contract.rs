@@ -8,7 +8,7 @@ use std::thread;
 
 use memless_capi::{
     memless_abi_version, memless_execute, memless_free_string, memless_load, memless_query,
-    memless_release, memless_result_cell, memless_result_column, memless_result_column_count,
+    memless_release, memless_reload, memless_result_cell, memless_result_column, memless_result_column_count,
     memless_result_release, memless_result_row_count, MemlessKind, MemlessStatus,
 };
 
@@ -55,8 +55,115 @@ fn run_execute(handle: u64, sql: &str) -> (MemlessStatus, u64) {
 }
 
 #[test]
-fn reports_abi_version_four() {
-    assert_eq!(memless_abi_version(), 4);
+fn reports_abi_version_five() {
+    assert_eq!(memless_abi_version(), 5);
+}
+
+fn reload_message(handle: u64) -> (MemlessStatus, String) {
+    let mut message: *mut c_char = ptr::null_mut();
+    let status = unsafe { memless_reload(handle, &mut message) };
+    (status, take_message(message))
+}
+
+const EDITED_START: &str = "\
+users:
+  - id: 01H7B2
+    name: Eve
+  - id: 01H7B3
+    name: Grace
+";
+
+#[test]
+fn a_reload_picks_up_the_file_and_writes_null_through_out_message() {
+    let (handle, dir) = load_copy("start.yaml");
+    std::fs::write(dir.join("start.yaml"), EDITED_START).expect("write");
+    let mut sentinel: c_char = 0;
+    let mut message: *mut c_char = &mut sentinel;
+    let status = unsafe { memless_reload(handle, &mut message) };
+    assert_eq!(status, MemlessStatus::Ok);
+    assert!(message.is_null());
+    assert_eq!(name_of(handle, "01H7B2"), "Eve");
+    memless_release(handle);
+}
+
+#[test]
+fn a_reload_writes_nothing_to_disk() {
+    let (handle, dir) = load_copy("start.yaml");
+    let file = dir.join("start.yaml");
+    let before = std::fs::read(&file).expect("read");
+    assert_eq!(reload_message(handle), (MemlessStatus::Ok, String::new()));
+    assert_eq!(std::fs::read(&file).expect("read"), before);
+    memless_release(handle);
+}
+
+#[test]
+fn a_result_obtained_before_a_reload_stays_valid() {
+    let (handle, dir) = load_copy("start.yaml");
+    let (status, result) = run_query(handle, "SELECT name FROM users WHERE id = '01H7B2'");
+    assert_eq!(status, MemlessStatus::Ok);
+    std::fs::write(dir.join("start.yaml"), EDITED_START).expect("write");
+    assert_eq!(reload_message(handle).0, MemlessStatus::Ok);
+    let mut text: *const c_char = ptr::null();
+    unsafe { memless_result_cell(result, 0, 0, ptr::null_mut(), ptr::null_mut(), ptr::null_mut(), &mut text) };
+    assert_eq!(unsafe { CStr::from_ptr(text) }.to_str().expect("utf-8"), "Ada");
+    memless_result_release(result);
+    memless_release(handle);
+}
+
+#[test]
+fn a_reload_during_a_transaction_is_refused_and_the_transaction_stays_open() {
+    let (handle, _dir) = load_copy("start.yaml");
+    assert_eq!(run_execute(handle, "BEGIN"), (MemlessStatus::Ok, 0));
+    assert_eq!(run_execute(handle, "UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'"), (MemlessStatus::Ok, 1));
+    let refused = (MemlessStatus::Refused, "cannot reload while a transaction is open".to_string());
+    assert_eq!(reload_message(handle), refused);
+    assert_eq!(name_of(handle, "01H7B2"), "Zoe");
+    assert_eq!(run_execute(handle, "ROLLBACK"), (MemlessStatus::Ok, 0));
+    assert_eq!(reload_message(handle), (MemlessStatus::Ok, String::new()));
+    memless_release(handle);
+}
+
+#[test]
+fn a_reload_of_a_deleted_file_is_refused_and_keeps_the_state() {
+    let (handle, dir) = load_copy("start.yaml");
+    let file = dir.join("start.yaml");
+    std::fs::remove_file(&file).expect("remove");
+    let (status, text) = reload_message(handle);
+    assert_eq!(status, MemlessStatus::Refused);
+    assert_eq!(text, format!("no file at path {:?}", file.to_str().expect("utf-8")));
+    assert_eq!(name_of(handle, "01H7B2"), "Ada");
+    memless_release(handle);
+}
+
+#[test]
+fn a_reload_of_an_incoherent_file_is_refused_with_the_load_message() {
+    let (handle, dir) = load_copy("start.yaml");
+    std::fs::copy(fixture_source("missing-id.yaml"), dir.join("start.yaml")).expect("copy");
+    assert_eq!(reload_message(handle), (MemlessStatus::Refused, "row 1 in \"users\" has no id".to_string()));
+    assert_eq!(name_of(handle, "01H7B2"), "Ada");
+    memless_release(handle);
+}
+
+#[test]
+fn an_unknown_handle_reload_is_invalid_argument() {
+    assert_eq!(reload_message(987_654), (MemlessStatus::InvalidArgument, "unknown handle".to_string()));
+}
+
+#[test]
+fn a_released_handle_reload_is_invalid_argument() {
+    let (handle, _dir) = load_copy("start.yaml");
+    memless_release(handle);
+    assert_eq!(reload_message(handle).0, MemlessStatus::InvalidArgument);
+}
+
+#[test]
+fn a_reload_tolerates_a_null_out_message_on_every_status() {
+    let (handle, dir) = load_copy("start.yaml");
+    assert_eq!(unsafe { memless_reload(handle, ptr::null_mut()) }, MemlessStatus::Ok);
+    std::fs::remove_file(dir.join("start.yaml")).expect("remove");
+    assert_eq!(unsafe { memless_reload(handle, ptr::null_mut()) }, MemlessStatus::Refused);
+    assert_eq!(unsafe { memless_reload(987_654, ptr::null_mut()) }, MemlessStatus::InvalidArgument);
+    memless_release(handle);
 }
 
 fn name_of(handle: u64, id: &str) -> String {

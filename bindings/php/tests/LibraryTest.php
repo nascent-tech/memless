@@ -11,7 +11,7 @@ final class LibraryTest extends TestCase
 {
     public function testAcceptsTheExpectedAbiVersion(): void
     {
-        Library::checkVersion(4);
+        Library::checkVersion(5);
         $this->expectNotToPerformAssertions();
     }
 

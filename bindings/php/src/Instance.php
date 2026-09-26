@@ -50,6 +50,11 @@ final class Instance
         Execute::run($this->handle, 'ROLLBACK');
     }
 
+    public function reload(): void
+    {
+        Reload::run($this->handle);
+    }
+
     public function __destruct()
     {
         $this->release();

@@ -20,6 +20,9 @@ vendor/
 harness/parity/go/driver
 harness/parity/tests/.fake-accept-driver
 harness/parity/tests/.fake-accept-node-driver
+harness/parity/tests/.fake-reload-driver
+harness/parity/tests/.fake-write-driver
+harness/parity/tests/.fake-transaction-driver
 
 # Node.js bridge and parity driver dependencies
 node_modules/

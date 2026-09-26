@@ -23,17 +23,18 @@ func main() {
 	fmt.Println(loadOutcome(argPath()))
 }
 
+var writeModes = map[string]func(string, string) string{
+	"write-disk":       writeDiskOutcome,
+	"transaction":      transactionOutcome,
+	"transaction-disk": transactionDiskOutcome,
+	"reload":           reloadOutcome,
+}
+
 func writeDispatch(path string, sql string, mode string) string {
-	switch mode {
-	case "write-disk":
-		return writeDiskOutcome(path, sql)
-	case "transaction":
-		return transactionOutcome(path, sql)
-	case "transaction-disk":
-		return transactionDiskOutcome(path, sql)
-	default:
-		return writeOutcome(path, sql)
+	if outcome, known := writeModes[mode]; known {
+		return outcome(path, sql)
 	}
+	return writeOutcome(path, sql)
 }
 
 func argPath() string {

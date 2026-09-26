@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the single comparison rule: a key whose values differ in type is refused and names the two rows,
   and ordering an aggregate, ordering by position and `NULLS FIRST`/`NULLS LAST` stay outside the
   subset.
+- `reload()` on an instance, in PHP, Go and Node.js: it re-reads the file the instance was loaded
+  from and replaces the in-memory state, exactly as a fresh load would. It is refused while a
+  transaction is open, or when the file would be refused at load (the old state stays readable and
+  writable either way), and a released instance faults.
+- The C ABI exposes `memless_reload`, and the parity harness replays reload scenarios on all three
+  bridges.
 
 ### Modifié
 
@@ -29,3 +35,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The three bridges look for the library in the same order — `MEMLESS_LIB`, which must name an
   existing file, then the release build, then the debug build (Go used to prefer the debug build) —
   and load it on the first call that needs it, never at import time.
+- The C ABI version is now 5, and the PHP, Go and Node.js bridges require an ABI 5 library.
