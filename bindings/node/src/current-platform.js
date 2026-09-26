@@ -7,7 +7,7 @@ const systemProbe = require('./system-probe');
 let cached;
 
 // The platform of this process, computed once; the libc is only probed on
-// Linux, and an unknown libc leaves no platform package to look for.
+// Linux, and an unknown libc leaves no bundled library to look for.
 function currentPlatform() {
   if (cached === undefined) {
     const libc = process.platform === 'linux' ? detectLibc(systemProbe) : null;

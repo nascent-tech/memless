@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+### Modifié
+
+- `npm install @nascent-tech/memless` brings the four native libraries inside the package, under
+  `lib/<platform>/`, like the Go module and the Composer package: a lockfile written on one platform
+  now installs on another, and `--omit=optional` no longer drops the library. The four platform
+  packages `@nascent-tech/memless-<platform>` are no longer published; the versions up to 0.3.0 stay
+  installable. The package grows to about 7.5 MB compressed.
+
 ## [0.3.0] — 2026-09-26
 
 ### Modifié

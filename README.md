@@ -280,10 +280,9 @@ built on Ubuntu 24.04 and need glibc 2.39 or later (Ubuntu 24.04 or later, or
 a distribution of the same age); on an older glibc, build the library locally
 and set `MEMLESS_LIB` (see below). How each package carries it:
 
-- **npm** — `@nascent-tech/memless` lists four platform packages
-  (`@nascent-tech/memless-darwin-arm64`, `-darwin-x64`, `-linux-x64-gnu`,
-  `-linux-arm64-gnu`) as optional dependencies; npm installs only the one that
-  matches your machine. See [`bindings/node/README.md`](bindings/node/README.md).
+- **npm** — `@nascent-tech/memless` ships `lib/<platform>/` for the four
+  platforms and loads the one that matches your machine. See
+  [`bindings/node/README.md`](bindings/node/README.md).
 - **Composer** — the package ships `lib/<platform>/` for the four platforms,
   and the C header the FFI extension needs. See
   [`bindings/php/README.md`](bindings/php/README.md).

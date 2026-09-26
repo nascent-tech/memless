@@ -24,8 +24,10 @@
     "directory": "bindings/node"
   },
   "files": [
-    "src"
+    "src",
+    "lib"
   ],
+  "preferUnplugged": true,
   "scripts": {
     "test": "node --test",
     "typecheck": "tsc --noEmit --strict --moduleResolution node --module commonjs --target es2020 tests/types-check.ts"

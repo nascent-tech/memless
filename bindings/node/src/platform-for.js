@@ -7,8 +7,8 @@ const platforms = {
   'linux-arm64-glibc': { name: 'linux-arm64-gnu', file: 'libmemless_capi.so' },
 };
 
-// The platform package matching an os, a cpu and, on Linux, a libc; null
-// when none is published, such as on Windows or musl.
+// The bundled platform matching an os, a cpu and, on Linux, a libc; null
+// when none is bundled, such as on Windows or musl.
 function platformFor(os, arch, libc) {
   const key = os === 'linux' ? `${os}-${arch}-${libc}` : `${os}-${arch}`;
   return platforms[key] || null;
