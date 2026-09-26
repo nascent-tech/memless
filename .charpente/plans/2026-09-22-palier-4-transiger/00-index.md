@@ -3,9 +3,9 @@ type: plan
 titre: Palier 4 — Transiger
 slug: palier-4-transiger
 cree_le: 2026-09-22T02:00:00+0000
-mis_a_jour_le: 2026-09-22T02:35:40+0000
+mis_a_jour_le: 2026-09-26T11:36:49+0000
 branche: main
-statut: livre
+statut: perime
 ---
 
 <!-- charpente-navigation -->

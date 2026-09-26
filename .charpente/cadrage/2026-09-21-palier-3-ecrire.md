@@ -3,9 +3,9 @@ type: cadrage
 titre: Palier 3 — Écrire
 slug: palier-3-ecrire
 cree_le: 2026-09-21T21:40:00+0000
-mis_a_jour_le: 2026-09-21T22:10:00+0000
+mis_a_jour_le: 2026-09-26T11:36:49+0000
 branche: main
-statut: valide
+statut: perime
 ---
 
 <!-- charpente-navigation -->
