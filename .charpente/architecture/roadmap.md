@@ -34,8 +34,9 @@ implémentées. La colonne de droite dit ce que chacune changerait dans **cette*
 | Coût de la réécriture complète du fichier, non mesuré au-delà des fixtures du MVP (§17.2 du brief) | **moyen** | si les fixtures grossissent, la réécriture peut devenir le geste le plus lent de la suite ; à trancher par le banc de mesure |
 | Parité réelle du pont PHP sur toutes les plateformes (§17.1 du brief) | **moyen** | PHP pourrait rester citoyen de seconde zone (FFI non activé, comportement divergent) ; prouvé par le banc de parité multi-OS, en CI |
 | `serde-saphyr` à mainteneur unique (§7) | faible | une dépendance critique repose sur une seule personne |
-| Bibliothèque embarquée non signée (npm, miroir PHP, miroir Go) | **faible** | aucune signature cryptographique sur la bibliothèque native distribuée ; atténué par le SHA-256 complet vérifié côté Go avant tout `dlopen`, par l'intégrité du paquet garantie par npm à l'installation, et par le recoupement possible avec `SHA256SUMS` déjà publié en Release GitHub |
+| Bibliothèque embarquée non signée (npm, miroirs PHP, Go et Node) | **faible** | aucune signature cryptographique sur la bibliothèque native distribuée ; atténué par le SHA-256 complet vérifié côté Go avant tout `dlopen`, par l'intégrité du paquet garantie par npm à l'installation, et par le recoupement possible avec `SHA256SUMS` déjà publié en Release GitHub |
 | Miroir PHP qui grossit d'environ 20 Mo par version | **faible** | chaque tag ajoute un commit orphelin portant les quatre bibliothèques natives sur `nascent-tech/memless-php` ; le dépôt miroir grossit sans purge, aucune limite fixée par ce palier |
+| Miroir Node qui grossit d'environ 22 Mo par version | **faible** | chaque tag ajoute un commit orphelin portant les quatre bibliothèques natives sur `nascent-tech/memless-node` ; même dette que les miroirs PHP et Go |
 | Miroir Go qui grossit d'environ 20 Mo par version | **faible** | chaque tag ajoute un commit orphelin portant les quatre bibliothèques natives sur `nascent-tech/memless-go` ; le dépôt miroir grossit sans purge, aucune limite fixée par cette révision |
 | Binaires Go des versions ≤ 0.2.1 retenus dans le dépôt principal par les tags `bindings/go/v0.2.x` | **faible, figée** | les tags sont immuables, plus rien ne s'y ajoute : un `git clone` de `nascent-tech/memless` télécharge encore ces binaires-là, mais aucune version postérieure ne les rejoint — le poids déjà accumulé reste, sans grossir davantage |
 | Paquet npm d'environ 22 Mo décompressés (7,5 Mo compressés) | **faible** | chaque installation Node télécharge les quatre bibliothèques, comme Go et PHP ; acceptable pour quatre plateformes, à rouvrir dès qu'une cinquième entre (question 6, révision « paquet npm unique ») |
@@ -46,7 +47,7 @@ implémentées. La colonne de droite dit ce que chacune changerait dans **cette*
 Les huit questions de la roadmap sont désormais **toutes tranchées**, par le code ou par une décision
 humaine datée :
 
-*Question 6 : révisé (miroir Go, puis paquet npm unique).*
+*Question 6 : révisé (miroir Go, paquet npm unique, puis miroir Node et contributions).*
 
 1. **Store — TRANCHÉ (caduque).** GlueSQL est sorti au palier 2 : l'état est
    `memless_domain::Base` (tables ordonnées, ordre des colonnes porté par `RawDocument`). L'ordre est
@@ -70,7 +71,8 @@ humaine datée :
    famille est la preuve ; sa ligne (date, famille, révision, lien du run, verdict) est recopiée dans
    `.charpente/releves/parite.md` par le fondateur au moment du tag — pas par un step de CI.
 6. **Distribution du binaire natif — TRANCHÉ, révisé au palier 6 (2026-09-26), puis révisé une
-   deuxième fois (miroir Go, 2026-09-26), puis une troisième (paquet npm unique, 2026-09-26).** **GitHub Releases est conservé** — quatre archives
+   deuxième fois (miroir Go, 2026-09-26), puis une troisième (paquet npm unique, 2026-09-26) et une quatrième (miroir Node et
+   contributions, 2026-09-26).** **GitHub Releases est conservé** — quatre archives
    `memless-capi-<version>-<cible>.tar.gz` (la cdylib + `memless.h`),
    `nascent-tech-memless-<version>.tgz` (le paquet npm publié), `memless-php-<version>.zip`,
    `memless-lib-SHA256SUMS` (les bibliothèques embarquées) et un fichier `SHA256SUMS` couvrant tous
@@ -88,9 +90,9 @@ humaine datée :
    ponts, aucune règle métier n'entre dans un pont. Linux musl ou à libc indéterminable (ni
    `/usr/bin/ldd` ni chargeur dynamique reconnu sous `/lib`) et Windows n'ont pas de bibliothèque
    embarquée : ils retombent à `target/`, puis à l'erreur claire citant `MEMLESS_LIB`. Cadrage :
-   `.charpente/cadrage/2026-09-26-palier-6-publier.md` (révisions « miroir Go » et « paquet npm unique » en fin de document). La
-   publication npm, Packagist et le miroir Go attendent les comptes du propriétaire (variables
-   `NPM_PUBLISH`, `PHP_MIRROR_PUBLISH`, `GO_MIRROR_PUBLISH`) ; les étapes sont dans
+   `.charpente/cadrage/2026-09-26-palier-6-publier.md` (révisions « miroir Go », « paquet npm unique », « libc indéterminable » et « miroir Node et contributions » en fin de document). La
+   publication npm et celles des trois miroirs sont commandées par les variables `NPM_PUBLISH`,
+   `PHP_MIRROR_PUBLISH`, `GO_MIRROR_PUBLISH` et `NODE_MIRROR_PUBLISH`, toutes posées ; les étapes sont dans
    `docs/PUBLISHING.md`.
 
    *Révision « miroir Go » (2026-09-26).* Le module Go **change de chemin** :
@@ -118,6 +120,16 @@ humaine datée :
    **version 0.4.0** (`feat(node)`). Les paquets de plateforme déjà publiés restent installables et
    sont dépréciés (`npm deprecate`, jamais retirés). Le paquet unique vaut pour les quatre plateformes
    de la question 7 : toute plateforme supplémentaire rouvre cette décision (dette §12.2).
+
+   *Révision « miroir Node et contributions » (2026-09-26).* Le pont Node gagne son **miroir**
+   `nascent-tech/memless-node`, sur le patron des deux autres : il reçoit à chaque tag le contenu exact
+   du paquet npm publié, commit orphelin et tag `vX.Y.Z`, clé de déploiement `NODE_MIRROR_DEPLOY_KEY`
+   limitée à ce dépôt, variable `NODE_MIRROR_PUBLISH`. La publication npm ne change pas : elle part du
+   dépôt principal, dont le paquet garde le `repository`, auquel la provenance npm le rattache. Les
+   trois miroirs sont publics mais écrits par la seule CI ; les **contributions** (issues, pull
+   requests) vont au dépôt principal, où le banc de parité vérifie qu'un changement atterrit dans les
+   trois ponts. Le dépôt principal porte guide de contribution, code de conduite, politique de
+   sécurité et modèles d'issue et de pull request.
 
    *Ce que cela remplace* — décision du palier 5 : « Aucun registre externe : GitHub Releases sur tag
    `vX.Y.Z` — quatre archives `memless-capi-<version>-<cible>.tar.gz` (la cdylib + `memless.h`), un

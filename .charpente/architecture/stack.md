@@ -27,7 +27,7 @@ sont celles constatées dans le code et les manifestes du dépôt.
 | Protocole API | **aucun** | Memless n'expose pas d'API réseau : le seul « protocole » est l'appel FFI en mémoire |
 | Edge/CDN, BFF, broker | **aucun** | ni réseau, ni distribution, ni messagerie — hors sujet pour une bibliothèque embarquée (§4.1) |
 | Observabilité | **aucune au lancement** | pas de service à surveiller ; les erreurs remontent comme valeurs de retour au code appelant, l'audit des données passe par Git (§9.1 du brief) |
-| Cloud | **aucun** | rien à héberger ; distribution par **GitHub Releases** sur tag, et depuis le palier 6 par les registres natifs de chaque langage — **npm**, **Packagist** (via un dépôt miroir), **le proxy Go** (module à bibliothèque embarquée, publié via un dépôt miroir `nascent-tech/memless-go`) (`ARCHITECTURE.md` §12.3 Q6) |
+| Cloud | **aucun** | rien à héberger ; distribution par **GitHub Releases** sur tag, et depuis le palier 6 par les registres natifs de chaque langage — **npm** (contenu montré dans un dépôt miroir `nascent-tech/memless-node`), **Packagist** (via un dépôt miroir), **le proxy Go** (module à bibliothèque embarquée, publié via un dépôt miroir `nascent-tech/memless-go`) (`ARCHITECTURE.md` §12.3 Q6) |
 
 **Sous-ensemble SQL constaté** : lecture avec filtre, tri (`ORDER BY`), jointure par relation devinée,
 compte et somme ; insertion, mise à jour, suppression ; `BEGIN`/`COMMIT`/`ROLLBACK` ; `LIMIT`,
