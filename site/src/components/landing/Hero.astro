@@ -21,12 +21,11 @@ INNER JOIN users ON wallets.user_id = users.id`;
 
 <section class="hero not-content">
 	<div class="pitch">
-		<p class="eyebrow">PHP · Go · Node.js</p>
 		<h1 id="_top">{title}</h1>
 		<p class="lede">
-			Memless loads a YAML file into memory, runs plain SQL against it, and writes every accepted
-			change back to the file. No schema to declare, no server to start — made for test fixtures
-			and demos.
+			From PHP, Go or Node.js, Memless loads a YAML file into memory, runs plain SQL against it,
+			and writes every accepted change back to the file. No schema to declare, no server to start —
+			made for test fixtures and demos.
 		</p>
 		<div class="install">
 			<Tabs syncKey="lang">
@@ -42,8 +41,8 @@ INNER JOIN users ON wallets.user_id = users.id`;
 			</Tabs>
 		</div>
 		<div class="actions">
-			<a class="button primary" href="/getting-started/quick-start/">Get started</a>
-			<a class="button" href="/reference/sql/">What SQL it understands</a>
+			<a class="button primary" href="/getting-started/quick-start/">Follow the quick start</a>
+			<a class="button" href="/reference/sql/">See the supported SQL</a>
 		</div>
 	</div>
 	<div class="demo">
@@ -74,13 +73,6 @@ INNER JOIN users ON wallets.user_id = users.id`;
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
-	}
-	.eyebrow {
-		margin: 0;
-		font-family: var(--__sl-font-mono);
-		font-size: var(--sl-text-sm);
-		font-weight: 500;
-		color: var(--sl-color-text-accent);
 	}
 	h1 {
 		margin: 0;
@@ -116,10 +108,21 @@ INNER JOIN users ON wallets.user_id = users.id`;
 		font-weight: 600;
 		text-decoration: none;
 	}
+	.button {
+		transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.button:hover {
+		border-color: var(--sl-color-gray-3);
+		background: var(--sl-color-gray-6);
+	}
 	.button.primary {
 		border-color: var(--ml-button);
 		background: var(--ml-button);
 		color: var(--ml-button-text);
+	}
+	.button.primary:hover {
+		border-color: var(--ml-button-hover);
+		background: var(--ml-button-hover);
 	}
 	.demo {
 		display: flex;

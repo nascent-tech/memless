@@ -63,7 +63,10 @@ if err != nil {
 	<div class="errors">
 		<h3>Even the errors match</h3>
 		<p>A refusal carries the same message in every language, so a test can assert on it.</p>
-		<pre>no column "nope" in table "users"</pre>
+		<dl class="refusal">
+			<div><dt>Query</dt><dd><code>SELECT nope FROM users</code></dd></div>
+			<div><dt>Refusal</dt><dd><code>no column "nope" in table "users"</code></dd></div>
+		</dl>
 		<dl>
 			<div><dt>Node.js</dt><dd><code>MemlessRefusal</code></dd></div>
 			<div><dt>PHP</dt><dd><code>Memless\MemlessRefusal</code></dd></div>
@@ -126,16 +129,24 @@ if err != nil {
 	.errors p {
 		font-size: var(--sl-text-base);
 	}
-	pre {
-		margin: 0;
-		padding: 1rem 1.25rem;
-		border-radius: 0.75rem;
+	.refusal {
 		background: #1e2127;
-		border: 1px solid #2c2f37;
-		font-family: var(--__sl-font-mono);
+	}
+	.refusal div {
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.refusal dt {
 		font-size: var(--sl-text-sm);
+		font-weight: 500;
+		color: #a7abb3;
+	}
+	.refusal code {
+		color: #f3f1ea;
+		overflow-wrap: anywhere;
+	}
+	.refusal div + div code {
 		color: #f2b880;
-		white-space: pre-wrap;
 	}
 	dl {
 		margin: 0;
