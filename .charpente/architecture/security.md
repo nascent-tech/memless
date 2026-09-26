@@ -110,7 +110,9 @@ identités de dépôt et des jetons, à traiter avec le même soin que le reste.
   jours, secret `NPM_TOKEN`), parce que Trusted Publishing ne peut pas amorcer un paquet qui n'existe
   pas encore sur npm. Une fois la première version publiée, le propriétaire crée les Trusted
   Publishers (OIDC, `id-token: write`) et supprime le jeton : les publications suivantes n'exposent
-  plus aucun secret npm de longue durée. Les jobs de publication ont des permissions minimales et
+  plus aucun secret npm de longue durée. Depuis 0.4.0, un seul paquet npm est publié
+  (`@nascent-tech/memless`) : un seul Trusted Publisher reste, ceux des quatre paquets de plateforme
+  dépréciés sont retirés. Les jobs de publication ont des permissions minimales et
   cloisonnées : `publish` (`contents: write`, pour créer la Release GitHub), `publish-go`
   (`contents: read`, la poussée se fait par la clé de déploiement SSH du miroir, jamais par le jeton
   GitHub Actions), `publish-npm` (`id-token: write`, `contents: read`), `publish-php`

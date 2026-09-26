@@ -3,8 +3,8 @@ type: cadrage
 titre: Palier 6 — Publier sur les registres
 slug: palier-6-publier
 cree_le: 2026-09-26T12:11:30+0000
-mis_a_jour_le: 2026-09-26T14:57:11+0000
-branche: docs/go-mirror
+mis_a_jour_le: 2026-09-26T16:15:00+0000
+branche: docs/npm-single-package
 statut: valide
 ---
 
@@ -21,7 +21,8 @@ Cadrage du **palier 6**, postérieur au MVP livré en 0.1.1 : « Publier sur les
 `ARCHITECTURE.md` §12.3 question 6 (« Distribution du binaire natif — TRANCHÉ » : GitHub Releases
 seul) et la dette §12.2 sur la résolution `MEMLESS_LIB`/`target/` seule. Décisions tranchées par
 l'arbitrage Fable du 2026-09-26, sur demande du propriétaire ; le code correspondant est livré par
-`feat/publish-registries` (0.2.0). Ce document décrit l'état livré en **0.2.0**.
+`feat/publish-registries` (0.2.0). Ce document décrit l'état livré en **0.2.0**, révisé en fin de document (miroir Go, 0.3.0 ;
+paquet npm unique, 0.4.0).
 
 ## 1. Acteur et déclencheur
 
@@ -197,3 +198,45 @@ déplacées ; plus aucun tag `bindings/go/*` n'est créé après cette révision
 écriture, portée limitée au miroir `nascent-tech/memless-go`) et la variable de dépôt
 **`GO_MIRROR_PUBLISH`** (comme `PHP_MIRROR_PUBLISH`) — tant qu'elle est absente ou fausse, `publish-go`
 est sauté sans faire échouer la CI, à l'identique de R6.
+
+## Révision du 2026-09-26 — paquet npm unique
+
+**Pourquoi.** La décision D2 ci-dessus (§10) répartissait la bibliothèque Node sur quatre **paquets de
+plateforme** posés en `optionalDependencies` du paquet principal. Ce découpage n'économise qu'une chose
+— environ 5,5 Mo compressés et 17 Mo décompressés par installation — et le pont Node est le seul des
+trois à le porter : le miroir PHP et le module Go livrent déjà les quatre bibliothèques à chaque
+installation. Il se paie en trois points constatés. Le mode de panne propre à `optionalDependencies` :
+un lockfile écrit sur une plateforme omet le paquet d'une autre, et `npm ci` échoue ensuite en
+conteneur ou en CI (npm/cli#4828, fermé le 3 avril 2025 mais encore signalé en 2025 et 2026 jusqu'à
+npm 11, sur les Node ≥ 18 annoncés par `engines`) ; `--omit=optional` et les réglages d'architecture de
+pnpm et Yarn produisent le même échec. Cinq paquets et cinq éditeurs de confiance npm (Trusted
+Publishers) à tenir. Un `package.json` publié qui n'est pas celui du dépôt, puisque la CI y injecte les
+dépendances optionnelles.
+
+**Décision.** Le paquet principal `@nascent-tech/memless` **embarque les quatre bibliothèques** sous
+`lib/<plateforme>/`, sur le patron du miroir PHP ; les paquets de plateforme ne sont plus publiés. Le
+pont lit la bibliothèque de la plateforme courante dans son propre répertoire `lib/`, sans
+`require.resolve` d'un paquet voisin. L'ordre de recherche de D1 ne change pas (`MEMLESS_LIB` →
+bibliothèque embarquée → `target/release` → `target/debug`), ni la détection glibc/musl : sur musl il
+n'y a toujours pas de bibliothèque embarquée, et l'échec doit rester le message qui nomme
+`MEMLESS_LIB`, pas le chargement raté d'une bibliothèque glibc — Go et PHP font de même. Le paquet
+passe d'environ 10 Ko compressés (28 Ko décompressés) à environ 7,5 Mo compressés et 22 Mo
+décompressés — la taille du zip PHP.
+
+**Borne.** Le paquet unique vaut pour les quatre plateformes du §7. Toute plateforme supplémentaire
+(Windows, musl) rouvre D2 : koffi, dont dépend le pont, a fait le chemin inverse en 3.0 (quatorze
+paquets de plateforme, vingt en 3.3), et un cinquième poids ajouté à chaque installation n'est plus le même arbitrage.
+
+**Rupture et version.** Aucune pour qui installe `@nascent-tech/memless` : même API, même ordre de
+recherche, et `--omit=optional` devient sans effet. Seule une dépendance directe à un paquet de
+plateforme cesserait de suivre les versions — un usage jamais documenté. Publiée en **0.4.0**
+(`feat(node)`, sans `BREAKING CHANGE`). Les paquets de plateforme déjà publiés (0.2.1, 0.3.0) restent
+installables et ne sont jamais retirés, puisque les versions correspondantes du paquet principal en
+dépendent ; ils sont **dépréciés** après la vérification de 0.4.0, et aucune version postérieure ne
+paraît sous leurs noms. Le vocabulaire du §3 garde **paquet de plateforme** pour ces versions
+passées ; le terme ne désigne plus rien de publié à partir de 0.4.0.
+
+**Ce que le propriétaire fait.** Après la vérification de 0.4.0 sur npm : déprécier les quatre
+paquets `@nascent-tech/memless-<plateforme>` (`npm deprecate`, jamais `npm unpublish`), puis retirer
+leurs quatre éditeurs de confiance sur npmjs.com — seul reste celui de `@nascent-tech/memless`. Rien
+côté GitHub : `NPM_PUBLISH` et les permissions de `publish-npm` ne changent pas.
