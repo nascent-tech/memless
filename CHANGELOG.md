@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+### Corrigé
+
+- The release workflow packages the library it actually built for each target (`.dylib` on
+  macOS, `.so` on Linux). The `v0.1.0` tag failed at this step, so no 0.1.0 archives were published.
+
 ## [0.1.0] — 2026-09-26
 
 ### Ajouté
