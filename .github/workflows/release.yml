@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-15
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the cdylib
+        run: cargo build --release --target ${{ matrix.target }} -p memless-capi
+
+      - name: Package the target archive
+        id: package
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          name="memless-capi-${version}-${{ matrix.target }}"
+          staging="dist/${name}"
+          mkdir -p "$staging"
+          shopt -s nullglob
+          libs=(target/${{ matrix.target }}/release/libmemless_capi.dylib target/${{ matrix.target }}/release/libmemless_capi.so)
+          if [ "${#libs[@]}" -eq 0 ]; then
+            echo "no cdylib produced under target/${{ matrix.target }}/release" >&2
+            exit 1
+          fi
+          cp "${libs[@]}" "$staging"/
+          cp crates/memless-capi/include/memless.h "$staging"/
+          (cd dist && tar -czf "${name}.tar.gz" "${name}")
+          echo "archive=dist/${name}.tar.gz" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-capi-${{ matrix.target }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/artifacts
+
+      - name: Assemble the release archives
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist/release
+          find dist/artifacts -mindepth 2 -maxdepth 2 -type f -name '*.tar.gz' -exec cp {} dist/release/ \;
+
+          npm pack --pack-destination dist/release ./bindings/node
+
+          php_staging="dist/staging/memless-php-${version}"
+          mkdir -p "$php_staging"
+          cp -R bindings/php/. "$php_staging"/
+          rm -rf "$php_staging"/vendor "$php_staging"/.phpunit.cache "$php_staging"/.phpunit.result.cache
+          (cd dist/staging && zip -r "../release/memless-php-${version}.zip" "memless-php-${version}")
+
+          (cd dist/release && sha256sum * >SHA256SUMS)
+
+      - name: Publish the GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/release/*

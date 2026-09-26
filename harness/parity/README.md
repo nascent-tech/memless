@@ -50,11 +50,11 @@ kind tag alongside the value until it renders the `int:`/`dec:` tag.
 cargo build -p memless-capi        # produce the cdylib the bridges load
 composer install -d harness/parity/php
 npm ci --prefix bindings/node             # the Node bridge's own dependency (koffi)
-npm install --prefix harness/parity/node  # the driver's file: dependency on the bridge
+npm ci --prefix harness/parity/node       # the driver's file: dependency on the bridge
 bash harness/parity/run.sh
 ```
 
-A fresh clone has no `node_modules` anywhere: `npm install --prefix harness/parity/node`
+A fresh clone has no `node_modules` anywhere: `npm ci --prefix harness/parity/node`
 only links the driver to the bridge (a `file:` dependency), it does not install the
 bridge's own `koffi` — that needs its own `npm ci` in `bindings/node` first, or the
 Node driver fails to load the library. `run.sh` checks for both and names whichever
