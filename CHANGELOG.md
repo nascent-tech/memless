@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+### Corrigé
+
+- The PHP archive of the GitHub release carries the four bundled libraries and the C header (the
+  0.2.0 archive did not; set `MEMLESS_LIB` with it).
+
 ## [0.2.0] — 2026-09-26
 
 ### Ajouté
