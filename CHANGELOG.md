@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+## [0.4.1] — 2026-09-26
+
+### Modifié
+
+- The documentation is rewritten for people who want to use memless. The README of each package —
+  shown on npm, on Packagist and in the Go module — is now a self-contained guide: install, quick
+  start, how to write the YAML file, the supported SQL, the API, value types, errors and
+  troubleshooting. It spells out that an integer and a decimal never compare (`WHERE amount > 1`
+  skips `1.5`), that `<name>_id` points at the table `<name>s` only when it exists, and how to enable
+  FFI for PHP under a web server. No code changes.
+
 ## [0.4.0] — 2026-09-26
 
 ### Ajouté
@@ -122,7 +133,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The C ABI version is now 5, and the PHP, Go and Node.js bridges require an ABI 5 library.
 - The PHP bridge requires PHP 8.1 or later (it used to declare 7.4).
 
-[Non publié]: https://github.com/nascent-tech/memless/compare/v0.4.0...HEAD
+[Non publié]: https://github.com/nascent-tech/memless/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/nascent-tech/memless/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/nascent-tech/memless/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nascent-tech/memless/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/nascent-tech/memless/compare/v0.2.0...v0.2.1
