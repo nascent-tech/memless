@@ -14,7 +14,7 @@ four places:
 | Where | What | Job | Runs when |
 | --- | --- | --- | --- |
 | GitHub Releases | `memless-capi-X.Y.Z-<target>.tar.gz` ×4, `nascent-tech-memless-X.Y.Z.tgz`, `memless-php-X.Y.Z.zip`, `memless-lib-SHA256SUMS`, `SHA256SUMS` | `publish` | always, on a tag |
-| Go module proxy | tag `bindings/go/vX.Y.Z` on a commit that adds `bindings/go/lib/<platform>/` and `bindings/go/lib/SHA256SUMS` | `publish-go` | always, on a tag |
+| Go module proxy | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-go`, module `github.com/nascent-tech/memless-go` | `publish-go` | repository variable `GO_MIRROR_PUBLISH` is `true` |
 | npm | `@nascent-tech/memless-darwin-arm64`, `-darwin-x64`, `-linux-x64-gnu`, `-linux-arm64-gnu`, then `@nascent-tech/memless` | `publish-npm` | repository variable `NPM_PUBLISH` is `true` |
 | Packagist | an orphan commit and tag `vX.Y.Z` in the mirror `nascent-tech/memless-php`, package `nascent-tech/memless` | `publish-php` | repository variable `PHP_MIRROR_PUBLISH` is `true` |
 
@@ -51,37 +51,47 @@ The jobs, in order:
    `memless-php-X.Y.Z/`) as artifacts. It needs no account, so it always runs;
    `publish` and `publish-php` both consume its output, so the package content
    is defined once.
-6. `publish` creates the GitHub release, whose npm tarball is the one
+6. `go-package` assembles the Go module tree (`bindings/go` without
+   `*_test.go`, `lib/.gitignore` and the placeholder `lib/<platform>/README.md`,
+   plus `LICENSE`, `lib/<platform>/` and `lib/SHA256SUMS`), checks the
+   checksums and the module path, runs `go vet` for the four platforms, then,
+   outside the repository, builds a program that requires the module through a
+   `replace` pointing at the tree (`go build -trimpath`, no `MEMLESS_LIB`, no
+   `target/`) on Linux x86_64 and runs a query. It uploads the tree as an
+   artifact. It needs no account, so it always runs.
+7. `publish` creates the GitHub release, whose npm tarball is the one
    `npm-packages` built (with its `optionalDependencies`) and whose PHP
-   archive is the zip `php-package` built. When the release already exists,
-   it says so and leaves it alone: assets are never replaced.
-7. `publish-go` commits the libraries into `bindings/go/lib/` on top of the
-   tagged commit, runs `go test` against the bundled library, and pushes the
-   tag `bindings/go/vX.Y.Z` with the workflow's `GITHUB_TOKEN`. That commit is
-   on no branch: `main` never carries a binary.
+   archive is the zip `php-package` built. It waits for `go-package` too, so
+   no release is created while one package fails its test. When the release
+   already exists, it says so and leaves it alone: assets are never replaced.
 8. `publish-npm` installs npm 11 and publishes the tarballs of `npm-packages`,
    the platform packages first and the main package last.
 9. `publish-php` takes the package tree `php-package` assembled and tested,
    and pushes it to the mirror as a single orphan commit, forced onto the
    mirror's `main`, and tags it `vX.Y.Z`. Packagist picks the tag up through
    its GitHub hook.
+10. `publish-go` does the same with the module tree `go-package` assembled
+    and tested, in the mirror `nascent-tech/memless-go`. The Go module proxy
+    picks the tag up on the first `go get` of that version.
 
-Each job only gets the permissions it needs: `publish` and `publish-go` can
-write the repository's contents, `publish-npm` can request an OIDC token for
-npm, the others can only read. `NPM_TOKEN` is only exposed to the step of
-`publish-npm` that publishes, and `PHP_MIRROR_DEPLOY_KEY` only to the step of
-`publish-php` that pushes.
+Each job only gets the permissions it needs: `publish` can write the
+repository's contents, `publish-npm` can request an OIDC token for npm, the
+others can only read. `NPM_TOKEN` is only exposed to the step of
+`publish-npm` that publishes, `PHP_MIRROR_DEPLOY_KEY` only to the step of
+`publish-php` that pushes, and `GO_MIRROR_DEPLOY_KEY` only to the step of
+`publish-go` that pushes. Each deploy key can write to its own mirror and
+nothing else.
 
 Every publishing step can be re-run safely: an existing GitHub release is
-left as it is, a version already on npm is skipped, and an existing
-`bindings/go/vX.Y.Z` tag or mirror tag `vX.Y.Z` is left as it is. **Tags are
+left as it is, a version already on npm is skipped, and an existing mirror
+tag `vX.Y.Z` is left as it is. **Tags are
 never moved or deleted, release assets never replaced**; if a published
 version is wrong, release a new patch version.
 
 ## One-time setup by the owner
 
-Until the owner has done this, `publish-npm` and `publish-php` are skipped on
-a tag and the workflow stays green; the GitHub release and the Go module are
+Until the owner has done this, `publish-npm`, `publish-php` and `publish-go`
+are skipped on a tag and the workflow stays green; the GitHub release is
 published regardless. Every command below assumes the GitHub CLI (`gh`) is
 logged in as an owner of the `nascent-tech` organization.
 
@@ -188,37 +198,61 @@ published from a mirror that only the release workflow writes to.
      (packagist.org → your profile → *Show API Token*), event *Just the push
      event*.
 
-### Go module proxy
+### Go module proxy, through the mirror repository
 
-Nothing to set up. The workflow pushes `bindings/go/vX.Y.Z` with its own
-`GITHUB_TOKEN`; the first `go get` of that version makes `proxy.golang.org`
-fetch and cache it. Two rules:
+The Go module path names the repository that holds it, and the module
+carries the four libraries, so it is published from a mirror that only the
+release workflow writes to: the main repository (and every clone of it)
+carries no binary.
 
-- **Never create `bindings/go/vX.Y.Z` by hand.** The workflow refuses to
-  continue when the tag already exists without the libraries, and the proxy
-  caches a version forever: a hand-made tag would publish a module without
-  its library. (The tags `bindings/go/v0.1.0` and `bindings/go/v0.1.1` were
-  made by hand, on `main`, and carry no library; `v0.2.0` is the first module
-  with one.)
-- If a repository ruleset protects tags, let GitHub Actions create
-  `bindings/go/*` tags.
+1. **The mirror exists**: `nascent-tech/memless-go`, public, created empty
+   (the workflow force-pushes its `main`). Its deploy key, with write access,
+   is registered too; the maintainer keeps the private half in
+   `~/.ssh/memless_go_mirror_deploy`. Had they to be recreated, the commands
+   are those of the PHP mirror above, with `memless-go` in place of
+   `memless-php`.
+
+2. **Store the private key as a secret** of this repository (the command
+   reads it from the file, so it never lands in your shell history):
+
+   ```sh
+   gh secret set GO_MIRROR_DEPLOY_KEY --repo nascent-tech/memless < ~/.ssh/memless_go_mirror_deploy
+   ```
+
+3. **Turn mirror publication on:**
+
+   ```sh
+   gh variable set GO_MIRROR_PUBLISH --body true --repo nascent-tech/memless
+   ```
+
+Nothing to register with the Go module proxy: the first `go get` of a version
+makes `proxy.golang.org` fetch and cache it forever. Two rules:
+
+- **Never push a `vX.Y.Z` tag to the mirror by hand.** The proxy caches a
+  version forever: a hand-made tag could publish a module without its
+  library.
+- **Never create a `bindings/go/*` tag** in this repository any more. The
+  versions up to 0.2.1 were published at
+  `github.com/nascent-tech/memless/bindings/go` through the tags
+  `bindings/go/vX.Y.Z` (`v0.1.0` and `v0.1.1` without a library, `v0.2.0` and
+  `v0.2.1` with it); they stay where they are, never moved or deleted.
 
 To make the new version show up at once instead of on the first user's
 `go get`:
 
 ```sh
-GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless/bindings/go@vX.Y.Z
+GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless-go@vX.Y.Z
 ```
 
 ## Dry run
 
 A manual run of the workflow is a rehearsal. It builds the four libraries,
-assembles every package — `npm pack` of the five npm packages, the mirror
-tree and its orphan commit, the Go commit and tag — and runs the same Linux
-install tests, then prints what each job would publish instead of publishing
-it. It does not create the GitHub release, push a tag, or publish to npm, and
-it ignores `NPM_PUBLISH` and `PHP_MIRROR_PUBLISH`, so it works before any
-account exists. The version is the one in `bindings/node/package.json`.
+assembles every package — `npm pack` of the five npm packages, the PHP and
+Go mirror trees and their orphan commits — and runs the same Linux install
+tests, then prints what each job would publish instead of publishing it. It
+does not create the GitHub release, push a tag, or publish to npm, and it
+ignores `NPM_PUBLISH`, `PHP_MIRROR_PUBLISH` and `GO_MIRROR_PUBLISH`, so it
+works before any account exists. The version is the one in `bindings/node/package.json`.
 
 ```sh
 gh workflow run release.yml --repo nascent-tech/memless --ref main -f dry_run=true
@@ -259,13 +293,13 @@ release; started on a branch, it stays a dry run.
    gh release view vX.Y.Z --repo nascent-tech/memless
    npm view @nascent-tech/memless@X.Y.Z optionalDependencies
    composer show --all nascent-tech/memless
-   GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless/bindings/go@vX.Y.Z
+   GOPROXY=https://proxy.golang.org go list -m github.com/nascent-tech/memless-go@vX.Y.Z
    ```
 
    Then, in an empty directory outside the repository and without
    `MEMLESS_LIB`, install each bridge the way a user would (`npm install
    @nascent-tech/memless`, `composer require nascent-tech/memless`, `go get
-   github.com/nascent-tech/memless/bindings/go@vX.Y.Z`) and run one query.
+   github.com/nascent-tech/memless-go@vX.Y.Z`) and run one query.
 
 5. **After the very first release**, finish the owner's setup: attach the npm
    trusted publishers and delete `NPM_TOKEN`, and submit the mirror to
@@ -278,7 +312,8 @@ If a job fails, fix the cause and re-run the failed jobs from the run page
 
 `lib/SHA256SUMS` lists the SHA-256 of each bundled library, with paths
 relative to `lib/` (`darwin-arm64/libmemless_capi.dylib`, …). The same file
-ships in the Go module (`bindings/go/lib/SHA256SUMS`), in the Composer
+ships in the Go module (`lib/SHA256SUMS` of the mirror
+`nascent-tech/memless-go`), in the Composer
 package (`lib/SHA256SUMS`) and on the GitHub release as
 `memless-lib-SHA256SUMS`; the release's own `SHA256SUMS` covers every release
 asset, that file included. The npm platform packages carry the same bytes;

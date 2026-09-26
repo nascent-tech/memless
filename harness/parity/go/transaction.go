@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	memless "github.com/nascent-tech/memless/bindings/go"
+	memless "github.com/nascent-tech/memless-go"
 )
 
 func transactionOutcome(fixture string, suite string) string {

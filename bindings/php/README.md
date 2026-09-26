@@ -4,8 +4,9 @@ A PHP bridge to the memless C ABI through [FFI](https://www.php.net/manual/en/bo
 — no extension to compile, only `ext-ffi` enabled. It loads the same
 `libmemless_capi` cdylib as the Go and Node bridges and speaks the same
 contract (ABI version 5), so the three stay in parity from a single shared
-surface. See the [project README](../../README.md) for what memless is, the
-guessing rules and the supported SQL subset.
+surface. See the
+[project README](https://github.com/nascent-tech/memless#readme) for what
+memless is, the guessing rules and the supported SQL subset.
 
 ## Requirements
 

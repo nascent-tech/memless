@@ -119,7 +119,7 @@ import (
 	"fmt"
 	"log"
 
-	memless "github.com/nascent-tech/memless/bindings/go"
+	memless "github.com/nascent-tech/memless-go"
 )
 
 func main() {
@@ -270,7 +270,7 @@ nothing to download or configure by hand:
 ```sh
 npm install @nascent-tech/memless                              # Node.js 18 or later
 composer require nascent-tech/memless                          # PHP 8.1 or later, ffi extension
-go get github.com/nascent-tech/memless/bindings/go@vX.Y.Z      # Go 1.21 or later
+go get github.com/nascent-tech/memless-go                      # Go 1.21 or later
 ```
 
 The library is bundled for four platforms: macOS on Apple silicon
@@ -287,10 +287,14 @@ and set `MEMLESS_LIB` (see below). How each package carries it:
 - **Composer** — the package ships `lib/<platform>/` for the four platforms,
   and the C header the FFI extension needs. See
   [`bindings/php/README.md`](bindings/php/README.md).
-- **Go** — the module embeds the library of the platform you build for (and
-  only that one); on first use it is extracted once into your user cache
-  directory (`memless/<version>-<checksum>/`) and checked against its SHA-256
-  before every load. See [`bindings/go/README.md`](bindings/go/README.md).
+- **Go** — the module `github.com/nascent-tech/memless-go`, published from
+  `bindings/go` by the mirror repository `nascent-tech/memless-go`, embeds the
+  library of the platform you build for (and only that one); on first use it
+  is extracted once into your user cache directory
+  (`memless/<version>-<checksum>/`) and checked against its SHA-256 before
+  every load. Versions up to 0.2.1 were published at
+  `github.com/nascent-tech/memless/bindings/go` and stay there. See
+  [`bindings/go/README.md`](bindings/go/README.md).
 
 All three bridges look for the library in the same order, on the first call
 that needs it (never at import time):

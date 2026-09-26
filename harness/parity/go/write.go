@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	memless "github.com/nascent-tech/memless/bindings/go"
+	memless "github.com/nascent-tech/memless-go"
 )
 
 func writeOutcome(fixture string, sql string) string {
