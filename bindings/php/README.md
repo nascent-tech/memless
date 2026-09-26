@@ -6,7 +6,7 @@ file — no schema, no server. It is made for test fixtures and demos.
 
 Everything you need to use it from PHP is on this page. The
 [project README](https://github.com/nascent-tech/memless#readme) has more
-detail on the file format and on transactions.
+detail on the file format, transactions and errors.
 
 ## Install
 
@@ -24,8 +24,9 @@ Check that FFI is available:
 php -r 'var_dump(extension_loaded("ffi"));'   # bool(true)
 ```
 
-If it prints `bool(false)`, enable it in `php.ini` (`extension=ffi`), or
-install your distribution's package (for example `php8.3-ffi`). From the
+If it prints `bool(false)`: on Debian and Ubuntu, FFI comes with
+`php8.x-common` and is enabled by default; on Fedora and RHEL, install
+`php-ffi`; elsewhere, add `extension=ffi` to `php.ini`. From the
 command line — PHPUnit, scripts — nothing else is needed. Under a web server
 (PHP-FPM, Apache), PHP only allows FFI in preloaded code by default: set
 `ffi.enable=true` there.
@@ -53,7 +54,7 @@ $db = Instance::load('data.yaml');
 $db->execute("INSERT INTO users (id, name) VALUES (3, 'Linus')"); // data.yaml is rewritten
 
 print_r($db->query('SELECT name FROM users ORDER BY name'));
-// [['name' => 'Ada'], ['name' => 'Grace'], ['name' => 'Linus']]
+// three rows: ['name' => 'Ada'], ['name' => 'Grace'] and ['name' => 'Linus']
 
 $db->release();
 ```
@@ -66,10 +67,11 @@ map of column names to values. Memless reads everything else from the data:
 | Rule | What Memless expects |
 | --- | --- |
 | Row identity | Every row has an `id`, text or integer, unique within its table. `5` and `"5"` are different ids. |
-| Relations | A column named `<name>_id` points at the `id` of the table `<name>s`, when it exists: `user_id` → `users`. The plural is always `<name>` + `s` (`category_id` → `categorys`). Every value must name an existing row. |
+| Relations | A column named `<name>_id` points at the `id` of the table `<name>s`, when it exists: `user_id` → `users`. The plural is always `<name>` + `s` (`category_id` → `categorys`). Every value present must name an existing row; a missing value is allowed. |
 | Values | Text, integer, decimal or boolean. Lists and maps inside a row are refused. |
 | Missing values | Any column but `id` may be left out; `null` (or `~`) counts as missing and reads back as `null`. |
-| Mixed types | Allowed in a column, but sorting on it or summing it is refused. |
+| Types never convert | An integer (`2`) and a decimal (`2.0`) are different types. A comparison only matches the same type: `WHERE amount > 1` skips `1.5`, and `WHERE amount = 2.0` does not match `2`. Keep one type per column (`2.0`, not `2`, in a decimal column). |
+| Mixed types | Allowed in a column, but sorting or summing rows of different types is refused. |
 
 ## Supported SQL
 
@@ -80,10 +82,10 @@ map of column names to values. Memless reads everything else from the data:
 | `JOIN` | One `INNER JOIN <table> ON <a>.<name>_id = <b>.id`; every column is then written `table.column` |
 | `ORDER BY` | One or more columns, `ASC` (default) or `DESC`; ties keep the file order, missing values come last |
 | Aggregates | `SELECT COUNT(*)` or `SELECT SUM(<column>)`, alone in the select list |
-| `INSERT` | `INSERT INTO <table> (<columns>) VALUES (<values>)` |
+| `INSERT` | `INSERT INTO <table> (<columns>) VALUES (<values>)`; the column list is required |
 | `UPDATE` / `DELETE` | `UPDATE <table> SET <column> = <value>, … [WHERE …]`, `DELETE FROM <table> [WHERE …]` |
 
-Anything else — `GROUP BY`, `LIMIT`, several joins, `LIKE`, `IN`, subqueries,
+Anything else — `GROUP BY`, `LIMIT`, several joins, `ORDER BY 1`, `LIKE`, `IN`, subqueries,
 `CREATE`… — is refused with `<construct> is outside the supported SQL subset`.
 
 ## Good to know
@@ -127,7 +129,7 @@ messages are identical in the Node.js and Go versions of Memless.
 - **`Memless\MemlessRefusal`** — the file or the SQL breaks a rule: unknown
   table or column, broken relation, unsupported SQL, transaction already open.
   It is an expected outcome, which you can assert on in a test.
-- **`Memless\MemlessFault`** — the bridge was misused (for example, a call
+- **`Memless\MemlessFault`** — the package was misused (for example, a call
   after `release()`) or an internal error happened. Its `status` property is
   `2` for an invalid argument and `3` for an internal error.
 
@@ -158,7 +160,7 @@ cargo build --release -p memless-capi
 export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
-The bridge looks for the engine in this order: `MEMLESS_LIB`, then the library
+The package looks for the engine in this order: `MEMLESS_LIB`, then the library
 bundled for your platform under `lib/<platform>/`, then, inside a clone of the
 repository, `target/release/` and `target/debug/`. On Linux it checks the libc
 first (`/usr/bin/ldd`, then the dynamic loader under `/lib`): musl, or a libc
@@ -177,9 +179,9 @@ read-only copy published with each release. See the
 [contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
 and the [security policy](https://github.com/nascent-tech/memless/security/policy).
 
-To work on the bridge in a clone of the repository:
+To work on this package in a clone of the repository:
 
 ```sh
-cargo build --release -p memless-capi   # the bridge loads target/release/ in a clone
+cargo build --release -p memless-capi   # in a clone, the package loads target/release/
 cd bindings/php && composer install && vendor/bin/phpunit
 ```

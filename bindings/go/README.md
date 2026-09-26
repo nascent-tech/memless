@@ -6,7 +6,7 @@ file — no schema, no server. It is made for test fixtures and demos.
 
 Everything you need to use it from Go is on this page. The
 [project README](https://github.com/nascent-tech/memless#readme) has more
-detail on the file format and on transactions.
+detail on the file format, transactions and errors.
 
 ## Install
 
@@ -69,10 +69,11 @@ map of column names to values. Memless reads everything else from the data:
 | Rule | What Memless expects |
 | --- | --- |
 | Row identity | Every row has an `id`, text or integer, unique within its table. `5` and `"5"` are different ids. |
-| Relations | A column named `<name>_id` points at the `id` of the table `<name>s`, when it exists: `user_id` → `users`. The plural is always `<name>` + `s` (`category_id` → `categorys`). Every value must name an existing row. |
+| Relations | A column named `<name>_id` points at the `id` of the table `<name>s`, when it exists: `user_id` → `users`. The plural is always `<name>` + `s` (`category_id` → `categorys`). Every value present must name an existing row; a missing value is allowed. |
 | Values | Text, integer, decimal or boolean. Lists and maps inside a row are refused. |
 | Missing values | Any column but `id` may be left out; `null` (or `~`) counts as missing and reads back as `nil`. |
-| Mixed types | Allowed in a column, but sorting on it or summing it is refused. |
+| Types never convert | An integer (`2`) and a decimal (`2.0`) are different types. A comparison only matches the same type: `WHERE amount > 1` skips `1.5`, and `WHERE amount = 2.0` does not match `2`. Keep one type per column (`2.0`, not `2`, in a decimal column). |
+| Mixed types | Allowed in a column, but sorting or summing rows of different types is refused. |
 
 ## Supported SQL
 
@@ -83,10 +84,10 @@ map of column names to values. Memless reads everything else from the data:
 | `JOIN` | One `INNER JOIN <table> ON <a>.<name>_id = <b>.id`; every column is then written `table.column` |
 | `ORDER BY` | One or more columns, `ASC` (default) or `DESC`; ties keep the file order, missing values come last |
 | Aggregates | `SELECT COUNT(*)` or `SELECT SUM(<column>)`, alone in the select list |
-| `INSERT` | `INSERT INTO <table> (<columns>) VALUES (<values>)` |
+| `INSERT` | `INSERT INTO <table> (<columns>) VALUES (<values>)`; the column list is required |
 | `UPDATE` / `DELETE` | `UPDATE <table> SET <column> = <value>, … [WHERE …]`, `DELETE FROM <table> [WHERE …]` |
 
-Anything else — `GROUP BY`, `LIMIT`, several joins, `LIKE`, `IN`, subqueries,
+Anything else — `GROUP BY`, `LIMIT`, several joins, `ORDER BY 1`, `LIKE`, `IN`, subqueries,
 `CREATE`… — is refused with `<construct> is outside the supported SQL subset`.
 
 ## Good to know
@@ -130,7 +131,7 @@ Node.js and PHP versions of Memless.
 - **`*memless.RefusalError`** — the file or the SQL breaks a rule: unknown
   table or column, broken relation, unsupported SQL, transaction already open.
   It is an expected outcome, which you can check for in a test.
-- **`*memless.FaultError`** — the bridge was misused (for example, a call after
+- **`*memless.FaultError`** — the package was misused (for example, a call after
   `Release`) or an internal error happened. Its `Status` field is `2` for an
   invalid argument and `3` for an internal error.
 
@@ -160,10 +161,11 @@ export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 **Where the embedded engine goes.** On first use, the engine is written once
 to your user cache directory (`~/Library/Caches/memless/` on macOS,
 `$XDG_CACHE_HOME/memless/` or `~/.cache/memless/` on Linux) and its SHA-256 is
-checked before every load. If that directory cannot be used, or is mounted
-`noexec`, set `MEMLESS_LIB`.
+checked before every load. If that directory cannot be used, the first call
+fails with an error naming `MEMLESS_LIB`; if it is mounted `noexec`, loading
+fails. In both cases, set `MEMLESS_LIB`.
 
-The bridge looks for the engine in this order: `MEMLESS_LIB`, then the
+The package looks for the engine in this order: `MEMLESS_LIB`, then the
 embedded engine for your platform, then, inside a clone of the repository,
 `target/release/` and `target/debug/`. On Linux it checks the libc first
 (`/usr/bin/ldd`, then the dynamic loader under `/lib`): musl, or a libc it
@@ -185,9 +187,9 @@ read-only copy published with each release. See the
 [contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
 and the [security policy](https://github.com/nascent-tech/memless/security/policy).
 
-To work on the bridge in a clone of the repository:
+To work on this package in a clone of the repository:
 
 ```sh
-cargo build --release -p memless-capi   # the bridge loads target/release/ in a clone
+cargo build --release -p memless-capi   # in a clone, the package loads target/release/
 cd bindings/go && go test ./...
 ```
