@@ -1,0 +1,67 @@
+<section class="fit not-content" aria-labelledby="fit">
+	<div>
+		<h2 id="fit">Made for fixtures, not production</h2>
+		<p>
+			Memless runs inside your process, with no concurrency control and no access control. When you
+			need GROUP BY, several joins or large data, reach for SQLite.
+		</p>
+	</div>
+	<div class="fit-actions">
+		<a class="button" href="/getting-started/quick-start/">Load your first fixture</a>
+		<a href="/guides/when-not-to-use/">When not to use Memless</a>
+	</div>
+</section>
+
+<style>
+	.fit {
+		margin-bottom: 6rem;
+		padding: 3rem;
+		border-radius: 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 3rem;
+	}
+	h2 {
+		margin: 0;
+		font-family: var(--__sl-font-mono);
+		letter-spacing: -0.03em;
+		color: var(--sl-color-white);
+		font-size: var(--sl-text-2xl);
+	}
+	p {
+		margin: 0.75rem 0 0;
+		line-height: 1.6;
+		color: var(--ml-muted);
+	}
+	.fit-actions {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+	}
+	.fit-actions a {
+		color: var(--sl-color-text-accent);
+	}
+	.fit-actions .button {
+		align-self: stretch;
+		min-height: 3rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.75rem;
+		background: var(--sl-color-white);
+		color: var(--sl-color-black);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	@media (max-width: 50rem) {
+		.fit {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 1.5rem;
+			padding: 1.25rem;
+			margin-bottom: 3rem;
+		}
+	}
+</style>

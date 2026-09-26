@@ -7,6 +7,16 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Memless',
+			components: { Hero: './src/components/landing/Hero.astro' },
+			customCss: [
+				'@fontsource-variable/instrument-sans',
+				'@fontsource-variable/jetbrains-mono',
+				'./src/styles/theme.css',
+			],
+			expressiveCode: {
+				themes: ['github-dark'],
+				styleOverrides: { borderRadius: '0.75rem', codeFontFamily: 'var(--__sl-font-mono)' },
+			},
 			description: 'Query and change a YAML file with SQL, from PHP, Go or Node.js.',
 			logo: {
 				light: './src/assets/memless-logo.svg',

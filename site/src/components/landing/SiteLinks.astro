@@ -1,0 +1,85 @@
+---
+const groups = [
+	{
+		label: 'Documentation',
+		links: [
+			['Install', '/getting-started/install/'],
+			['Quick start', '/getting-started/quick-start/'],
+			['Writing the YAML file', '/guides/yaml-file/'],
+			['Errors', '/reference/errors/'],
+		],
+	},
+	{
+		label: 'Packages',
+		links: [
+			['npm', 'https://www.npmjs.com/package/@nascent-tech/memless'],
+			['Packagist', 'https://packagist.org/packages/nascent-tech/memless'],
+			['Go module', 'https://pkg.go.dev/github.com/nascent-tech/memless-go'],
+		],
+	},
+	{
+		label: 'Project',
+		links: [
+			['GitHub', 'https://github.com/nascent-tech/memless'],
+			['Changelog', 'https://github.com/nascent-tech/memless/blob/main/CHANGELOG.md'],
+			['Contributing', 'https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md'],
+			['Security', 'https://github.com/nascent-tech/memless/security/policy'],
+		],
+	},
+];
+---
+
+<footer class="links not-content">
+	<p class="license">MIT License</p>
+	{groups.map(({ label, links }) => (
+		<nav aria-label={label}>
+			<p class="label">{label}</p>
+			<ul>
+				{links.map(([text, href]) => (
+					<li><a href={href}>{text}</a></li>
+				))}
+			</ul>
+		</nav>
+	))}
+</footer>
+
+<style>
+	.links {
+		padding-block: 3.5rem 1rem;
+		border-top: 1px solid var(--sl-color-gray-5);
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 2rem;
+	}
+	p {
+		margin: 0;
+	}
+	.license {
+		color: var(--sl-color-gray-3);
+	}
+	.label {
+		font-weight: 600;
+		color: var(--sl-color-white);
+	}
+	ul {
+		margin: 0.625rem 0 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+	}
+	a {
+		color: var(--ml-muted);
+		text-decoration: none;
+	}
+	a:hover {
+		color: var(--sl-color-text-accent);
+		text-decoration: underline;
+	}
+	@media (max-width: 50rem) {
+		.links {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+</style>

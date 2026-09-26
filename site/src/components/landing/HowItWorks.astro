@@ -1,0 +1,91 @@
+<section class="how not-content" aria-labelledby="how">
+	<h2 id="how">Three steps, no setup</h2>
+	<ol>
+		<li>
+			<span class="number">01</span>
+			<h3>Write the file</h3>
+			<p>
+				Each key is a table, each table a list of rows. Memless reads value types, row ids and
+				relations from the data itself: <code>user_id</code> points at <code>users</code>.
+			</p>
+		</li>
+		<li>
+			<span class="number">02</span>
+			<h3>Query it with SQL</h3>
+			<p>
+				SELECT with WHERE, ORDER BY and one INNER JOIN, COUNT and SUM, INSERT, UPDATE, DELETE, and
+				transactions. Anything else is refused, never approximated.
+			</p>
+		</li>
+		<li>
+			<span class="number">03</span>
+			<h3>Changes go back to the file</h3>
+			<p>
+				Every accepted write rewrites the file, replaced atomically so a crash never leaves it
+				half-written. Transactions write it once, on COMMIT.
+			</p>
+		</li>
+	</ol>
+</section>
+
+<style>
+	.how {
+		display: flex;
+		flex-direction: column;
+		gap: 2.5rem;
+		padding-bottom: 6rem;
+	}
+	h2 {
+		margin: 0;
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-3xl);
+		letter-spacing: -0.03em;
+		color: var(--sl-color-white);
+	}
+	ol {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1.5rem;
+	}
+	li {
+		padding: 2rem;
+		border-radius: 1rem;
+		background: var(--ml-panel);
+		border: 1px solid var(--ml-panel-border);
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+	.number {
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-sm);
+		font-weight: 700;
+		color: var(--sl-color-text-accent);
+	}
+	h3 {
+		margin: 0;
+		font-size: var(--sl-text-2xl);
+		font-weight: 600;
+		color: var(--sl-color-white);
+	}
+	p {
+		margin: 0;
+		line-height: 1.6;
+		color: var(--ml-muted);
+	}
+	code {
+		font-family: var(--__sl-font-mono);
+		font-size: 0.875em;
+	}
+	@media (max-width: 50rem) {
+		ol {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		li {
+			padding: 1.25rem;
+		}
+	}
+</style>
