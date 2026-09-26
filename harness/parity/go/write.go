@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"os"
 	"strconv"
 	"strings"
 
@@ -26,16 +25,13 @@ func writeDiskOutcome(fixture string, sql string) string {
 	if instance == nil {
 		return failed
 	}
-	_ = os.Chmod(dir, 0o555)
-	out := report(instance, dir, dest, base, sql)
-	_ = os.Chmod(dir, 0o755)
-	return out
+	return withReadonlyDir(dir, func() string { return report(instance, dir, dest, base, sql) })
 }
 
 func loadInstance(dest string) (*memless.Instance, string) {
 	instance, err := memless.Load(dest)
 	if err != nil {
-		return nil, "fault:" + err.Error() + "\nsha256:-\nresidue:no\n"
+		return nil, writeError(err) + "\nsha256:-\nresidue:no\n"
 	}
 	return instance, ""
 }

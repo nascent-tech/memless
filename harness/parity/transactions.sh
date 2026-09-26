@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Sourced by run.sh: replays transactions.txt through both bridges and requires
-# the same block (issue per instruction, then sha256 and residue) from each.
-# Shares diverged, here, php_driver, go_driver and is_transaction_outcome.
+# Sourced by run.sh: replays transactions.txt through all three bridges and
+# requires the same block (issue per instruction, then sha256 and residue)
+# from each. Shares diverged, here, php_driver, go_driver and node_driver.
 
 is_transaction_outcome() {
 	case "$1" in
@@ -43,19 +43,25 @@ if [ -f "$transactions" ]; then
 		php_status=$?
 		go_out=$("${go_driver[@]}" "$path" "$suite" "$mode" 2>/dev/null)
 		go_status=$?
+		node_out=$("${node_driver[@]}" "$path" "$suite" "$mode" 2>/dev/null)
+		node_status=$?
 		if [ "$php_status" -ne 0 ] || ! is_transaction_outcome "$php_out"; then
 			echo "TRANSACTION DRIVER FAILURE [$fixture | $suite] (php): status=$php_status out=[$php_out]"
 			diverged=1
 		elif [ "$go_status" -ne 0 ] || ! is_transaction_outcome "$go_out"; then
 			echo "TRANSACTION DRIVER FAILURE [$fixture | $suite] (go): status=$go_status out=[$go_out]"
 			diverged=1
+		elif [ "$node_status" -ne 0 ] || ! is_transaction_outcome "$node_out"; then
+			echo "TRANSACTION DRIVER FAILURE [$fixture | $suite] (node): status=$node_status out=[$node_out]"
+			diverged=1
 		elif [ "$mode" = "transaction-disk" ] && ! is_transaction_disk_refused "$php_out"; then
 			echo "TRANSACTION DISK NOT REFUSED [$fixture | $suite]: [$php_out]"
 			diverged=1
-		elif [ "$php_out" != "$go_out" ]; then
+		elif [ "$php_out" != "$go_out" ] || [ "$php_out" != "$node_out" ]; then
 			echo "TRANSACTION DIVERGENCE [$fixture | $suite]"
-			echo "  php=[$php_out]"
-			echo "  go =[$go_out]"
+			echo "  php =[$php_out]"
+			echo "  go  =[$go_out]"
+			echo "  node=[$node_out]"
 			diverged=1
 		fi
 	done <"$transactions"

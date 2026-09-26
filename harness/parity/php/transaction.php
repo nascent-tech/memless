@@ -8,7 +8,8 @@ use Memless\MemlessRefusal;
 function transactionOutcome(string $fixture, string $suite): string
 {
     $paths = copyFixture($fixture);
-    $report = reportSuite(Instance::load($paths[1]), $suite, $paths);
+    [$instance, $failed] = loadOrFail($paths[1]);
+    $report = $instance !== null ? reportSuite($instance, $suite, $paths) : $failed;
     cleanupDir($paths[0]);
 
     return $report;
@@ -17,10 +18,10 @@ function transactionOutcome(string $fixture, string $suite): string
 function transactionDiskOutcome(string $fixture, string $suite): string
 {
     $paths = copyFixture($fixture);
-    $instance = Instance::load($paths[1]);
-    chmod($paths[0], 0555);
-    $report = reportSuite($instance, $suite, $paths);
-    chmod($paths[0], 0755);
+    [$instance, $failed] = loadOrFail($paths[1]);
+    $report = $instance !== null
+        ? withReadonlyDir($paths[0], fn () => reportSuite($instance, $suite, $paths))
+        : $failed;
     cleanupDir($paths[0]);
 
     return $report;

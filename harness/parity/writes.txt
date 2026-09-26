@@ -20,3 +20,5 @@ start.yaml	UPDATE users SET id = 1.5 WHERE id = '01H7B2'
 start.yaml	INSERT INTO users (id, name) VALUES ('01H7B2', 'Dup')
 start.yaml	DELETE FROM users WHERE id = '01H7B3'
 !disk	start.yaml	UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'
+# a refused load in write mode reports refused:<msg>, not fault:<msg> (M5)
+missing-id.yaml	INSERT INTO users (id, name) VALUES ('u1', 'Zoe')

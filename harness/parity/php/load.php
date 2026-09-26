@@ -126,10 +126,22 @@ function writeReport(Instance $instance, string $sql, array $paths): string
     return $report;
 }
 
+function loadOrFail(string $path): array
+{
+    try {
+        return [Instance::load($path), null];
+    } catch (MemlessRefusal $refusal) {
+        return [null, 'refused:' . $refusal->getMessage() . "\nsha256:-\nresidue:no\n"];
+    } catch (\Throwable $fault) {
+        return [null, 'fault:' . $fault->getMessage() . "\nsha256:-\nresidue:no\n"];
+    }
+}
+
 function writeOutcome(string $fixture, string $sql): string
 {
     $paths = copyFixture($fixture);
-    $report = writeReport(Instance::load($paths[1]), $sql, $paths);
+    [$instance, $failed] = loadOrFail($paths[1]);
+    $report = $instance !== null ? writeReport($instance, $sql, $paths) : $failed;
     cleanupDir($paths[0]);
 
     return $report;
@@ -138,13 +150,23 @@ function writeOutcome(string $fixture, string $sql): string
 function writeDiskOutcome(string $fixture, string $sql): string
 {
     $paths = copyFixture($fixture);
-    $instance = Instance::load($paths[1]);
-    chmod($paths[0], 0555);
-    $report = writeReport($instance, $sql, $paths);
-    chmod($paths[0], 0755);
+    [$instance, $failed] = loadOrFail($paths[1]);
+    $report = $instance !== null
+        ? withReadonlyDir($paths[0], fn () => writeReport($instance, $sql, $paths))
+        : $failed;
     cleanupDir($paths[0]);
 
     return $report;
+}
+
+function withReadonlyDir(string $dir, callable $fn): mixed
+{
+    chmod($dir, 0555);
+    try {
+        return $fn();
+    } finally {
+        chmod($dir, 0755);
+    }
 }
 
 function runWrite(Instance $instance, string $sql, string $dest, string $base): string

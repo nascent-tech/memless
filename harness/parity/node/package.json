@@ -1,0 +1,10 @@
+{
+  "name": "memless-parity-node",
+  "private": true,
+  "description": "Node.js driver for harness/parity: depends on the Node bridge by relative path, mirroring the PHP and Go drivers' own dependency on it.",
+  "type": "commonjs",
+  "main": "main.js",
+  "dependencies": {
+    "@nascent-tech/memless": "file:../../../bindings/node"
+  }
+}

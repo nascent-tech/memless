@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Memless\Tests;
 
 use Memless\Instance;
+use Memless\MemlessFault;
 use Memless\MemlessRefusal;
 use PHPUnit\Framework\TestCase;
 
@@ -72,6 +73,18 @@ final class ExecuteTest extends TestCase
             $instance->execute('SELECT * FROM users');
         } finally {
             $instance->release();
+        }
+    }
+
+    public function testExecuteAfterReleaseFaults(): void
+    {
+        [$instance] = $this->loadCopy('start.yaml');
+        $instance->release();
+        try {
+            $instance->execute('DELETE FROM users');
+            $this->fail('expected a MemlessFault');
+        } catch (MemlessFault $fault) {
+            $this->assertSame(2, $fault->status);
         }
     }
 

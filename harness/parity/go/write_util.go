@@ -36,3 +36,12 @@ func residueFlag(dir string, base string) string {
 func cleanupDir(dir string) {
 	_ = os.RemoveAll(dir)
 }
+
+// withReadonlyDir runs fn while dir is read-only, then always restores it,
+// even if fn panics — otherwise a panic would leave the temp dir stuck
+// read-only, and cleanup after it would fail too.
+func withReadonlyDir(dir string, fn func() string) string {
+	_ = os.Chmod(dir, 0o555)
+	defer func() { _ = os.Chmod(dir, 0o755) }()
+	return fn()
+}

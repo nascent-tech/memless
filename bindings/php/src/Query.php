@@ -14,10 +14,12 @@ final class Query
 
     private const STATUS_REFUSED = 1;
 
+    private const STATUS_INVALID_ARGUMENT = 2;
+
     public static function run(int $handle, string $sql): array
     {
         if (strpos($sql, "\0") !== false) {
-            throw new \InvalidArgumentException('sql contains a NUL byte');
+            throw new MemlessFault(self::STATUS_INVALID_ARGUMENT, 'sql contains a NUL byte');
         }
 
         $ffi = Library::ffi();
@@ -45,6 +47,6 @@ final class Query
             throw new MemlessRefusal($message);
         }
 
-        throw new \LogicException("memless query fault ({$status}): {$message}");
+        throw new MemlessFault($status, $message);
     }
 }

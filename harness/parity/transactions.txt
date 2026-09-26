@@ -26,3 +26,8 @@ start.yaml	ROLLBACK
 # a disk failure at COMMIT closes the transaction (the trailing COMMIT reads "no
 # open transaction") and leaves the file untouched
 !disk	start.yaml	BEGIN;;UPDATE users SET name = 'Zoe' WHERE id = '01H7B2';;COMMIT;;COMMIT
+# an integer beyond 2^53 stays exact across the write and the read-your-writes
+# SELECT (brief S8.8): PHP's platform int64, Go's int64, Node's BigInt.
+start.yaml	BEGIN;;UPDATE wallets SET amount = 9007199254740993 WHERE id = 'w_123';;SELECT amount FROM wallets WHERE id = 'w_123';;COMMIT
+# a refused load in transaction mode reports refused:<msg>, not fault:<msg> (M5)
+missing-id.yaml	BEGIN;;COMMIT

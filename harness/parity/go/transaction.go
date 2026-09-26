@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"strings"
 
 	memless "github.com/nascent-tech/memless/bindings/go"
@@ -24,10 +23,7 @@ func transactionDiskOutcome(fixture string, suite string) string {
 	if instance == nil {
 		return failed
 	}
-	_ = os.Chmod(dir, 0o555)
-	out := reportSuite(instance, dir, dest, base, suite)
-	_ = os.Chmod(dir, 0o755)
-	return out
+	return withReadonlyDir(dir, func() string { return reportSuite(instance, dir, dest, base, suite) })
 }
 
 func reportSuite(instance *memless.Instance, dir string, dest string, base string, suite string) string {
