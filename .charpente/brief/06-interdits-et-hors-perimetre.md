@@ -45,6 +45,7 @@ Chaque ligne est un état qui doit être impossible, pas un message d'erreur à 
   ou abandonner sans qu'aucune ne soit ouverte n'a jamais lieu non plus — §8.5, §15 décision 29.
 - Un rechargement demandé pendant qu'une transaction est ouverte n'a jamais lieu, et un rechargement
   qui échoue ne vide jamais l'état déjà chargé — §8.9.
+- Une transaction ouverte au moment où l'instance est libérée n'atteint jamais le disque — §8.5.
 - Un changement qui n'a pas atteint le disque ne reste jamais retenu en mémoire — §8.6, §15 décision
   18.
 - Une ligne encore référencée par une relation devinée, à la fin d'une transaction validée, n'est
@@ -76,4 +77,4 @@ Chaque ligne est un état qui doit être impossible, pas un message d'erreur à 
 | Une façon de déclarer explicitement une relation quand la convention de nom ne suffit pas (une colonne qui n'a pas le suffixe `_id`, ou qui pointe vers une table au nom irrégulier) | décision produit (§15 décision 31) : la convention de nom est le seul mécanisme au lancement, pour rester aussi simple que possible à écrire — le risque que ça fait courir est nommé en hypothèse, §17.3 | qu'un usage réel bute sur des relations que la convention ne détecte pas — §16 |
 | Un système d'audit applicatif — qui a déclenché un changement, avec quelle autorisation | l'historique Git (§9.1) montre ce qui a changé, pas qui a lancé le test qui l'a changé ; ce sont deux besoins différents | Exclusion durable : tant que le premier usage est les tests, cet audit reste hors périmètre ; il ne « reviendra » que par une décision de produit distincte |
 | La compatibilité entre fichiers écrits par des versions différentes des trois ponts | au lancement, une seule version existe : la question ne se pose pas encore, et les fichiers déjà écrits par cette version ne porteront jamais de marque a posteriori | qu'une deuxième version des ponts soit publiée — §16 |
-| Un inventaire consultable de ce que Memless a deviné (types, identifiants, relations) | décision produit : au lancement, un refus ou une relation qui tient déjà dit ce qu'il faut savoir, sans registre séparé à maintenir | Exclusion durable : un inventaire ne reviendrait que par une décision ultérieure, pas par une condition déjà engagée |
+| Un inventaire consultable de ce que Memless a deviné (types, identifiants, relations) | décision produit : au lancement, un refus ou une relation qui tient déjà dit ce qu'il faut savoir, sans registre séparé à maintenir | qu'une fausse détection ou une relation manquée soit constatée sur de vraies fixtures (§17.3 b) — §16 |

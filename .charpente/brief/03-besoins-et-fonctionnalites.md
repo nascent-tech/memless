@@ -112,7 +112,8 @@ devine une structure depuis des données, il n'en invente pas depuis rien.
 **Ce qui est refusé.** Un chemin qui ne désigne aucun fichier, un fichier qu'on n'a pas le droit de
 lire, un fichier vide, un YAML syntaxiquement invalide, un YAML valide qui ne déclare aucune table, une
 clé de premier niveau dont la valeur n'est pas une liste de lignes — ou dont un élément n'est pas
-lui-même un ensemble de champs —, une valeur imbriquée là où un scalaire est attendu, et une clé de
+lui-même un ensemble de champs —, une valeur imbriquée là où un scalaire est attendu, une clé de table
+ou de colonne qui n'est pas un texte (un nombre, un vrai/faux), et une clé de
 table ou de colonne écrite deux fois : chacun est refusé avec une erreur qui dit laquelle de ces
 raisons s'applique (§15, décision 21). Laisser la dernière valeur d'une clé dupliquée l'emporter en
 silence serait deviner ce qui était voulu — un fichier n'est jamais chargé à moitié (§13). Une table
@@ -147,7 +148,9 @@ leurs relations devinées, agréger (compter, sommer).
 **Ce qui est refusé.** Un texte qui ne s'analyse pas comme du SQL valide, une requête qui désigne une
 table ou une colonne absente de ce qui a été deviné, et une requête par ailleurs valide mais qui
 dépasse ce que ce sous-ensemble de SQL sait exécuter, sont chacune refusées avec une erreur qui le
-dit — jamais exécutées à moitié, jamais ignorées en silence. L'étendue exacte de ce sous-ensemble est
+dit — jamais exécutées à moitié, jamais ignorées en silence. Trier une colonne dont deux lignes du
+résultat portent des types différents est refusé — deux types ne s'ordonnent jamais (§15, décision 34) ;
+une ligne qui ne porte pas la colonne triée se place en dernier. L'étendue exacte de ce sous-ensemble est
 un détail de conception, pas de ce document. Un nom de table ou de colonne lu depuis le fichier n'est,
 lui, jamais contraint en amont : il vient tel quel de la clé YAML qui l'a introduit, espace ou mot
 réservé SQL compris. Dans l'autre sens — un nom introduit par une écriture SQL (§8.4) plutôt que lu
@@ -201,7 +204,9 @@ ensemble, soit aucune n'a lieu — c'est à la validation que ce tout-ou-rien se
 entre deux tirelires (§5.1). À l'intérieur d'une transaction ouverte, une lecture voit les écritures déjà faites dans
 cette même transaction, même si rien n'est encore validé. Une transaction peut aussi être abandonnée
 volontairement, sans qu'aucune instruction n'ait été refusée — pour un scénario qu'on veut observer
-puis ne pas garder.
+puis ne pas garder. Ouvrir, valider et abandonner s'écrivent en texte SQL, avec les trois mots du
+standard — `BEGIN`, `COMMIT`, `ROLLBACK` — passés au même geste d'écriture que toute instruction
+(§12.2) ; chaque pont peut les envelopper dans trois appels du même nom.
 
 **Ce qu'il faut.** Un scénario métier qui a besoin que plusieurs changements réussissent ensemble —
 par exemple, retirer d'un portefeuille et ajouter à un autre (§7).
@@ -227,7 +232,7 @@ Mettre fin à une instance elle-même — au sens de libérer les ressources qu'
 qu'on n'en a plus besoin — n'est pas un dixième geste du produit : la surface native expose une
 libération que chaque langage appelant enveloppe dans son mécanisme habituel de fin de vie d'un objet
 (ramasse-miettes, ou un appel explicite de fermeture), sans que ce soit une fonctionnalité de plus au
-sens du §8.
+sens du §8. Libérer une instance qui a une transaction ouverte l'abandonne : rien n'atteint le disque.
 
 ### 8.6 Toute transaction validée est aussitôt réécrite dans le fichier YAML
 
@@ -238,8 +243,8 @@ morceau. Une coupure ou un plantage pendant l'écriture laisse donc toujours soi
 intact, soit le nouveau complet — jamais un mélange des deux. Une transaction qui échoue avant la
 substitution supprime elle-même le fichier à part qu'elle avait commencé ; seul un arrêt brutal du
 processus entre les deux peut laisser ce fichier à part derrière lui, sans jamais l'avoir rendu
-officiel — le chargement ou l'écriture suivants l'ignorent sans jamais le confondre avec le fichier
-réel ; ce fichier à part porte un nom reconnaissable, pour que l'équipe puisse l'ignorer côté Git (§15,
+officiel — le chargement suivant l'ignore ; l'écriture suivante le remplace, sans jamais le confondre
+avec le fichier réel ; ce fichier à part porte un nom reconnaissable, pour que l'équipe puisse l'ignorer côté Git (§15,
 décision 17). Une transaction validée qui ne change rien à l'état final — même si des instructions ont été exécutées en cours de route — ne
 déclenche aucune réécriture.
 
@@ -285,7 +290,9 @@ mise à `NULL` automatique de leur référence, n'existent pas au lancement — 
 un adaptateur, un pont ou une bibliothèque native — jamais par une réécriture indépendante de la
 logique. Chaque pont rend les résultats dans la forme naturelle de son langage (objet, tableau, table
 associative) ; les **valeurs**, elles, sont identiques d'un langage à l'autre — « brut » (§3.4)
-qualifie l'absence de modèle-classe, pas l'absence de type natif.
+qualifie l'absence de modèle-classe, pas l'absence de type natif. Un nombre entier accepté par
+Memless garde sa valeur exacte dans les trois langages, même au-delà de ce qu'un langage représente
+nativement sans perte.
 
 **Ce qu'il faut.** Le langage appelant, avec le pont correspondant installé.
 

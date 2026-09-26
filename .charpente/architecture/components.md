@@ -14,19 +14,19 @@ le code appelant — aucun n'est déployé à part.
 
 | Composant | Responsabilité (métaphore) | Technologie | Déploiement |
 |---|---|---|---|
-| Pont natif | le traducteur qui porte l'appel d'un langage jusqu'au cœur, sans jamais décider à sa place | npm + napi-rs · Composer + FFI · module Go + purego | paquet par langage, chargé dans le processus hôte |
+| Pont natif | le traducteur qui porte l'appel d'un langage jusqu'au cœur, sans jamais décider à sa place | Composer + FFI · module Go + purego · npm + koffi (FFI dynamique) | paquet par langage, chargé dans le processus hôte |
 | Adaptateur entrant | le comptoir d'accueil : décode l'appel, retrouve l'instance, appelle le cas d'usage, rend la réponse et sa propriété mémoire | Rust — `memless-capi` (unique `cdylib`, C ABI) | lié à la compilation dans la bibliothèque native |
 | Handle d'instance | la poignée numérotée du vestiaire : désigne une copie en mémoire et son unique transaction | Rust — table d'instances opaques, protégée entre fils (§10.5) | en mémoire, dans le processus |
-| Cas d'usage | le chef d'atelier qui orchestre chargement, requête, écriture, transaction, rechargement | Rust — `memless-core::application` | bibliothèque native |
-| Chargeur + parseur YAML | l'ouvreur de boîte : lit le fichier, refuse un YAML invalide ou une valeur imbriquée | Rust — adaptateur `yaml` (bibliothèque YAML, §7) | bibliothèque native |
+| Cas d'usage | le chef d'atelier qui orchestre chargement, requête, écriture, transaction, rechargement | Rust — `memless-engine::application` (charger, interroger, écrire, ouvrir/valider/abandonner, recharger) | bibliothèque native |
+| Lecteur + analyseur YAML | l'ouvreur de boîte : lit le fichier, refuse un YAML invalide ou une valeur imbriquée | Rust — `memless-engine::yaml` (`reader`, `parse`) | bibliothèque native |
 | Inférence de structure | le trieur qui reconnaît le contenu sans étiquette : type de chaque valeur, colonne `id`, relations par le nom | Rust pur — `memless-domain` | bibliothèque native |
-| Règle de comparaison | l'arbitre qui refuse d'égaler `"5"` et `5` | Rust pur — `memless-domain` pour `id` et relations ; GlueSQL pour les comparaisons SQL (voir 4.3) | bibliothèque native |
-| Garde du sous-ensemble SQL | le portier : refuse le DDL (`CREATE`/`ALTER`/`DROP`) et le hors-sous-ensemble, crée la table à la première écriture | Rust — port `application::SqlGate`, implémenté dans l'adaptateur `gluesql/` (il s'appuie sur l'analyseur de GlueSQL) | bibliothèque native |
-| Store GlueSQL | l'entrepôt : détient les lignes en mémoire et les sert à GlueSQL ; porte aussi l'ordre des tables/colonnes que GlueSQL perd (§8.6) | Rust — *newtype* autour de `gluesql-memory-storage::MemoryStorage` | bibliothèque native |
-| Moteur GlueSQL | le juriste du SQL : analyse et exécute le texte, sans rien deviner ni persister | crate `gluesql` (Apache-2.0) | lié à la compilation |
-| Validateur d'invariants | le contrôleur qualité de fin de chaîne : à la validation, `id` présent et unique, relations intactes | Rust pur — `memless-domain` | bibliothèque native |
-| Gestionnaire de transaction | le gardien du tout-ou-rien : une seule transaction ouverte, lecture de ses propres écritures, annulation par snapshot — `MemoryStorage` n'offre pas de transaction native | Rust — `application` + snapshot par `clone()` de l'état | bibliothèque native |
-| Écrivain YAML atomique | le copiste prudent : temporaire + `fsync` + `rename` ; ordre stable pour un diff lisible | Rust — adaptateur `yaml` | bibliothèque native |
+| Règle de comparaison | l'arbitre qui refuse d'égaler `"5"` et `5` | Rust pur — `memless-domain` seule, y compris pour les comparaisons d'une requête SQL (l'exécuteur vit dans le domaine, voir 4.3) | bibliothèque native |
+| Garde du sous-ensemble SQL | le portier : refuse le DDL (`CREATE`/`ALTER`/`DROP`) et le hors-sous-ensemble (dont `LIMIT`/`OFFSET`/`GROUP BY`), crée la table à la première écriture | Rust — `memless-engine::sql` (analyse par `sqlparser` 0.54, `GenericDialect`, abaissement vers `Statement`, refus par les `reject_*`, type `OutsideSubset`) | bibliothèque native |
+| Base | l'entrepôt : détient les tables et leurs lignes, dans l'ordre du fichier ; l'état de travail d'une transaction en est un clone | Rust pur — `memless-domain::Base` (`RawDocument` porte l'ordre des colonnes) | bibliothèque native |
+| Exécuteur SQL | le juriste du SQL : exécute le `Statement` abaissé (lire, trier, joindre, agréger, écrire), sans rien deviner ni persister | Rust pur — `memless-domain::base::{select, write}` | bibliothèque native |
+| Vérification des contraintes | le contrôleur qualité de fin de chaîne : à la validation, `id` présent et unique, relations intactes | Rust pur — `memless-domain` | bibliothèque native |
+| Gestionnaire de transaction | le gardien du tout-ou-rien : une seule transaction ouverte, lecture de ses propres écritures, annulation par clone | Rust — `Instance { path, base: Base, transaction: Option<Base> }`, clone de `base` à l'ouverture | bibliothèque native |
+| Écrivain YAML par substitution | le copiste prudent : temporaire + `fsync` + `rename` + `fsync` du répertoire ; ordre stable pour un diff lisible | Rust — `memless-engine::yaml::writer` (temporaire `.<nom>.memless-tmp`) | bibliothèque native |
 
 ### 4.1 Bordure, passerelle, BFF
 
@@ -36,18 +36,16 @@ BFF** (*Backend For Frontend*, une couche qui adapte un service aux besoins d'un
 protéger en bordure. Le pont natif joue un rôle comparable à un adaptateur de bordure — il traduit
 l'appel d'un langage vers le contrat du cœur — mais sans distribution ni cache, dans la même mémoire.
 
-### 4.2 Un point à trancher — le chemin de Node
+### 4.2 Le chemin de Node — tranché
 
-Node passe par un addon napi-rs — un mince enrobage compilé du **même cœur**, sans logique propre.
-Reste à décider s'il dépend de `memless-core` en Rust ou lie `memless-capi` par C ABI, et s'il expose
-des types plus riches ou colle au contrat partagé — ce qui touche la vérification de parité (§5.1 du
-brief) et le nombre de binaires à empaqueter. Le détail vit en §12.3, question 3.
+Node charge la même `memless-capi` (C ABI) que Go et PHP, par `koffi` ≥ 2.16 (FFI dynamique) plutôt que
+par un addon compilé (napi-rs) — décision humaine du 2026-09-22. Un seul binaire natif à empaqueter
+pour les trois ponts.
 
-### 4.3 Un point à surveiller — la règle de comparaison à deux endroits
+### 4.3 La règle de comparaison, à un seul endroit
 
-La décision 34 du brief veut **une seule** règle de comparaison. En pratique deux moteurs
-l'appliquent : le domaine pour l'unicité d'`id` et les relations, GlueSQL pour les comparaisons dans
-les requêtes SQL. Le brief a vérifié une fois que GlueSQL sans schéma ne convertit jamais un type dans
-un autre (§5.2 du brief). Pour que les deux restent d'accord à chaque montée de version de GlueSQL, le
-banc de parité inclut des paires témoins (`"5"` vs `5`, décimaux — décision 20 du brief) ; le risque
-de divergence est inscrit en dette (§12.2).
+Il n'y a plus deux moteurs : une seule règle de comparaison, un seul endroit. L'exécuteur SQL
+(`memless-domain::base::select`, `base::write`) applique la même règle de comparaison
+(`memless_domain::scalar::scalar_order`, fonction `compare_same_type`) que l'unicité d'`id` et les relations —
+exigence de la décision 34 du brief, désormais garantie par construction : il n'existe qu'un seul
+moteur de comparaison dans tout le crate, pas deux à tenir d'accord.

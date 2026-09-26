@@ -18,6 +18,7 @@ qu'un besoin réel et constaté la réclame, plutôt qu'un besoin supposé.
 | Un verrou entre processus qui protège un même fichier ouvert deux fois en même temps | protège contre deux processus qui écrivent en même temps dans le même fichier | qu'un usage réel où deux processus ouvrent le même fichier en même temps soit constaté — §14 |
 | Une marque de version dans le format de fichier, pour la compatibilité entre ponts | permet de détecter et de gérer un fichier écrit par une version différente des trois ponts | qu'une deuxième version des trois ponts soit publiée — §14 |
 | Une façon de déclarer explicitement une relation que la convention de nom ne repère pas | couvre les cas où le nom d'une colonne ou d'une table ne suit pas la convention `_id` / pluriel | qu'un usage réel bute sur des relations que la convention ne détecte pas (§17.3) — §14 |
+| Un inventaire de ce que Memless a deviné | dit quelles relations et quels types ont été reconnus, pour comprendre un refus ou une relation manquée | qu'un retour du §17.3 (b) le réclame — §14 |
 
 ---
 
@@ -36,9 +37,11 @@ systèmes.
 couche réseau déguisée en « natif », ou version bêta qui dure — ce qui viole l'exigence des trois
 langages à parité posée dès la demande de départ.
 
-**Ce qui le trancherait.** Ce que le premier prototype ne couvre pas encore : le même comportement sur
-les familles de systèmes que l'architecture retiendra, et non une seule machine, et sous une charge
-réelle de requêtes plutôt qu'un appel isolé. Comment ce pont est construit relève de l'architecture ; l'hypothèse, elle,
+**Ce qui le trancherait.** Ce que le premier prototype ne couvrait pas encore : le même comportement sur
+les familles de systèmes retenues par l'architecture (`ARCHITECTURE.md` §12.3 Q7), et non une seule
+machine, et sous une charge réelle de requêtes plutôt qu'un appel isolé — ce que le banc de parité,
+rejoué par l'architecture sur chaque famille retenue, vérifie à chaque changement (relevé de parité).
+Comment ce pont est construit relève de l'architecture ; l'hypothèse, elle,
 est de produit. Elle s'appuyait déjà sur un fait observé : sur les moteurs comparables trouvés en
 recherche (DuckDB, libSQL/Turso, SurrealDB), le pont PHP est systématiquement le plus fragile des
 trois — §18.
@@ -150,5 +153,6 @@ reviennent, un tel inventaire (§16) devient une candidate pour la feuille de ro
 Packagist ou module Go n'a pas été recherchée : elle est hors du périmètre de ce document. La
 couverture de l'écosystème Go dans la recherche ci-dessus est moins exhaustive que celle de
 JavaScript et PHP — un projet Go récent et peu visible a pu échapper à la recherche. Le prototype qui
-soutient l'hypothèse §17.1 n'a tourné que sur une seule machine : son comportement sur les familles de
-systèmes que l'architecture retiendra reste à vérifier — §17.1.
+soutenait l'hypothèse §17.1 n'avait tourné que sur une seule machine ; son comportement sur les
+familles de systèmes retenues par l'architecture (`ARCHITECTURE.md` §12.3 Q7) se vérifie par le banc de
+parité rejoué sur chaque famille — §17.1.
