@@ -55,7 +55,7 @@ else
 		exit 2
 	fi
 	if [ ! -d "$here/node/node_modules/@nascent-tech/memless" ]; then
-		echo "node driver not installed; run: npm install --prefix $here/node" >&2
+		echo "node driver not installed; run: npm ci --prefix $here/node" >&2
 		exit 2
 	fi
 	node_driver=(node "$here/node/main.js")

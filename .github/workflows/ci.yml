@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gates:
+    name: gates (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-15
+            php: "8.3"
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+            php: "8.5"
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-24.04
+            php: "8.3"
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            php: "8.3"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo check
+        run: cargo check --all-targets
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test
+
+      - name: cargo build --release
+        run: cargo build --release -p memless-capi
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: ffi
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: bindings/go/go.mod
+          cache-dependency-path: |
+            bindings/go/go.sum
+            harness/parity/go/go.sum
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: PHP bridge tests
+        run: |
+          composer install -d bindings/php
+          (cd bindings/php && vendor/bin/phpunit)
+
+      - name: Go bridge tests
+        run: (cd bindings/go && go test ./...)
+
+      - name: Node bridge tests
+        run: |
+          npm ci --prefix bindings/node
+          npm test --prefix bindings/node
+
+      - name: Node bridge type check
+        run: npm run typecheck --prefix bindings/node
+
+      - name: Parity harness dependencies
+        run: |
+          composer install -d harness/parity/php
+          npm ci --prefix harness/parity/node
+
+      - name: Parity harness
+        run: bash harness/parity/run.sh
+
+      - name: Parity harness regression tests
+        run: |
+          set -e
+          for test in harness/parity/tests/detects-*.sh; do
+            echo "== $test =="
+            bash "$test"
+          done
