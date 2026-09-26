@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A logo, with its favicons, app icons and link-sharing card. The files are served at
   <https://memless.nascent-tech.co/brand/> for use elsewhere. The site also publishes a `robots.txt`
   that points search engines at its sitemap.
+- The documentation site gets its own look: a home page that shows a YAML file, a query and its
+  result, the same example in all three languages, and the SQL Memless understands or refuses;
+  headings and code in JetBrains Mono, text in Instrument Sans, both served by the site itself.
 
 ## [0.4.1] — 2026-09-26
 

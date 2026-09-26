@@ -2,31 +2,19 @@
 title: Memless
 description: Query and change a YAML file with SQL, from PHP, Go or Node.js.
 template: splash
+editUrl: false
 hero:
-  tagline: Query and change a YAML file with SQL, from PHP, Go or Node.js. No schema, no server — the same result and the same error in all three languages.
-  actions:
-    - text: Get started
-      link: /getting-started/install/
-      icon: right-arrow
-    - text: View on GitHub
-      link: https://github.com/nascent-tech/memless
-      icon: external
-      variant: minimal
+  title: Query and change a YAML file with SQL.
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import HowItWorks from '../../components/landing/HowItWorks.astro';
+import Parity from '../../components/landing/Parity.astro';
+import SqlSubset from '../../components/landing/SqlSubset.astro';
+import Fit from '../../components/landing/Fit.astro';
+import SiteLinks from '../../components/landing/SiteLinks.astro';
 
-<CardGrid stagger>
-	<Card title="Fixtures you can read" icon="document">
-		Test data lives in a YAML file you can review and diff in Git. Memless reads value types, row identities and relations from the data itself.
-	</Card>
-	<Card title="The SQL you already know" icon="seti:db">
-		`SELECT`, `WHERE`, `JOIN`, `ORDER BY`, `INSERT`, `UPDATE`, `DELETE` and transactions. Anything outside the subset is refused, never approximated.
-	</Card>
-	<Card title="Writes go back to the file" icon="pencil">
-		Every accepted change rewrites the file atomically, so a crash never leaves it half-written.
-	</Card>
-	<Card title="One engine, three languages" icon="puzzle">
-		PHP, Go and Node.js share the same native engine: same file, same SQL, same result, same error message.
-	</Card>
-</CardGrid>
+<HowItWorks />
+<Parity />
+<SqlSubset />
+<Fit />
+<SiteLinks />
