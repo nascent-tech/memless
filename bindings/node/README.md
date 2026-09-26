@@ -7,6 +7,28 @@ parity from a single shared surface. Node.js 18 or later. See the
 [project README](../../README.md) for what memless is, the guessing rules and
 the supported SQL subset.
 
+## Install
+
+```sh
+npm install @nascent-tech/memless
+```
+
+That is all: the package lists four platform packages as optional
+dependencies, at its own exact version, and npm installs only the one that
+matches your machine, which carries the native library:
+
+| Package | Platform |
+| --- | --- |
+| `@nascent-tech/memless-darwin-arm64` | macOS on Apple silicon |
+| `@nascent-tech/memless-darwin-x64` | macOS on Intel |
+| `@nascent-tech/memless-linux-x64-gnu` | Linux x86_64 with glibc |
+| `@nascent-tech/memless-linux-arm64-gnu` | Linux aarch64 with glibc |
+
+The Linux libraries need glibc 2.39 or later (Ubuntu 24.04 or later). Elsewhere
+(Linux with musl or an older glibc, for instance), see [The cdylib](#the-cdylib).
+Installing with `--omit=optional` (or `--no-optional`) skips the platform
+package too; the bridge then needs `MEMLESS_LIB`.
+
 ## Surface
 
 ```js
@@ -51,17 +73,34 @@ db.release();
 
 The bridge loads the native library on the first call that needs it, never
 at `require()` time, and looks for it in the same order as the Go and PHP
-bridges: `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
-existing file, then, inside a checked-out workspace, `target/release/`, then
-`target/debug/` (`.dylib` before `.so`). The library must speak ABI version 5.
-Build it first:
+bridges:
+
+1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
+   existing file;
+2. the library of the platform package npm installed, found with
+   `require.resolve('@nascent-tech/memless-<platform>/package.json')`. On
+   Linux the bridge checks the libc itself, once (`/usr/bin/ldd`, then
+   `process.report`), because an older npm ignores the `libc` field of the
+   platform packages: musl, or a libc it cannot tell, has no platform package;
+3. inside a checked-out workspace, `target/release/`, then `target/debug/`
+   (`.dylib` before `.so`).
+
+When nothing is found, the error says to set `MEMLESS_LIB`. The library must
+speak ABI version 5. On another platform, or with your own build, set
+`MEMLESS_LIB`:
 
 ```sh
 cargo build --release -p memless-capi
+export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
 `MEMLESS_LIB` loads arbitrary native code, like any FFI library path — only
 point it at a library you trust.
+
+In this repository, `package.json` does not list the platform packages: the
+release workflow adds them when it publishes, from the templates under
+`platforms/`, so that installing the bridge for development never pulls a
+published library over the one you build under `target/`.
 
 ## Running the tests
 

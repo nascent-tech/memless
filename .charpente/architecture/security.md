@@ -87,8 +87,9 @@ La publication sur les registres externes ouvre une surface qui n'existait pas a
 identités de dépôt et des jetons, à traiter avec le même soin que le reste.
 
 - **Extraction dans le cache utilisateur (Go)** : la bibliothèque embarquée par `//go:embed` est
-  extraite une fois dans `os.UserCacheDir()/memless/<version>-<sha256 court>/`, écrite par un fichier
-  temporaire puis `rename` (jamais un fichier partiellement écrit visible du chargeur). **Avant tout
+  extraite une fois dans `os.UserCacheDir()/memless/<version>-<sha256 court>/` : dossier de cache créé
+  0700, bibliothèque 0755, écriture par fichier temporaire puis `rename` (jamais un fichier
+  partiellement écrit visible du chargeur). **Avant tout
   `dlopen`**, le SHA-256 complet du fichier présent dans le cache est comparé aux octets embarqués dans
   le binaire ; un écart réécrit le fichier avant de l'ouvrir — le cache ne peut pas servir une
   bibliothèque altérée sans que la vérification le détecte.
@@ -105,8 +106,9 @@ identités de dépôt et des jetons, à traiter avec le même soin que le reste.
   pas encore sur npm. Une fois la première version publiée, le propriétaire crée les Trusted
   Publishers (OIDC, `id-token: write`) et supprime le jeton : les publications suivantes n'exposent
   plus aucun secret npm de longue durée. Les jobs de publication ont des permissions minimales et
-  cloisonnées : `publish-go` (`contents: write`), `publish-npm` (`id-token: write`, `contents: read`),
-  `publish-php` (`contents: read`) — chaque secret n'est visible que du job qui l'utilise.
+  cloisonnées : `publish` (`contents: write`, pour créer la Release GitHub), `publish-go`
+  (`contents: write`), `publish-npm` (`id-token: write`, `contents: read`), `publish-php`
+  (`contents: read`) — chaque secret n'est visible que du job qui l'utilise.
 
 ### 10.7 Audit
 

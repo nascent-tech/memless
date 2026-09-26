@@ -5,54 +5,30 @@ declare(strict_types=1);
 namespace Memless;
 
 /**
- * Resolves the header and cdylib paths, from the environment or the workspace.
+ * Resolves the header and cdylib paths: from the environment, then from the
+ * files this package bundles, then from the workspace.
  */
 final class LibraryPath
 {
     public static function header(): string
     {
-        $env = getenv('MEMLESS_HEADER');
-        $default = dirname(__DIR__, 3) . '/crates/memless-capi/include/memless.h';
-        $path = is_string($env) && $env !== '' ? $env : $default;
-        if (!is_file($path)) {
-            throw new \LogicException("memless header not found at {$path}; set MEMLESS_HEADER");
-        }
-
-        return $path;
+        return self::search()->header(self::env('MEMLESS_HEADER'));
     }
 
     public static function library(): string
     {
-        $env = getenv('MEMLESS_LIB');
-        if (!is_string($env) || $env === '') {
-            return self::search();
-        }
-        if (!is_file($env)) {
-            throw new \LogicException("memless cdylib not found at {$env}; set MEMLESS_LIB");
-        }
-
-        return $env;
+        return self::search()->library(self::env('MEMLESS_LIB'), Bundle::current());
     }
 
-    private static function search(): string
+    private static function search(): LibrarySearch
     {
-        $found = array_filter(self::candidates(), 'is_file');
-        if ($found === []) {
-            throw new \LogicException('memless cdylib not found; set MEMLESS_LIB');
-        }
-
-        return (string) reset($found);
+        return new LibrarySearch(dirname(__DIR__), dirname(__DIR__, 3));
     }
 
-    private static function candidates(): array
+    private static function env(string $name): ?string
     {
-        $root = dirname(__DIR__, 3);
+        $value = getenv($name);
 
-        return [
-            "{$root}/target/release/libmemless_capi.dylib",
-            "{$root}/target/debug/libmemless_capi.dylib",
-            "{$root}/target/release/libmemless_capi.so",
-            "{$root}/target/debug/libmemless_capi.so",
-        ];
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

@@ -4,10 +4,59 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and assemble every package, print what would be published, publish nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
 
 jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Decide the version and whether to publish
+        id: plan
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          manifest=$(jq -r .version bindings/node/package.json)
+          version="$manifest"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if [ "$version" != "$manifest" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match bindings/node/package.json version ${manifest}" >&2
+            exit 1
+          fi
+          for crate in crates/*/Cargo.toml; do
+            crate_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$crate" | head -n 1)
+            if [ "$crate_version" != "$manifest" ]; then
+              echo "${crate} has version '${crate_version}', bindings/node/package.json has ${manifest}" >&2
+              exit 1
+            fi
+          done
+          publish=false
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "${DRY_RUN:-false}" != true ]; then
+            publish=true
+          fi
+          echo "version=${version}" >>"$GITHUB_OUTPUT"
+          echo "publish=${publish}" >>"$GITHUB_OUTPUT"
+          echo "version ${version}; publish ${publish} (ref ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}, dry_run '${DRY_RUN:-}')"
+
   build:
     name: build (${{ matrix.target }})
+    needs: plan
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -15,12 +64,16 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             os: macos-15
+            platform: darwin-arm64
           - target: x86_64-apple-darwin
             os: macos-15-intel
+            platform: darwin-x64
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-24.04
+            platform: linux-x64-gnu
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
+            platform: linux-arm64-gnu
     steps:
       - uses: actions/checkout@v7
 
@@ -31,14 +84,15 @@ jobs:
       - name: Build the cdylib
         run: cargo build --release --target ${{ matrix.target }} -p memless-capi
 
-      - name: Package the target archive
+      - name: Package the target archive and the raw library
         id: package
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          name="memless-capi-${version}-${{ matrix.target }}"
+          name="memless-capi-${VERSION}-${{ matrix.target }}"
           staging="dist/${name}"
-          mkdir -p "$staging"
+          mkdir -p "$staging" dist/lib
           libs=()
           for ext in dylib so; do
             candidate="target/${{ matrix.target }}/release/libmemless_capi.${ext}"
@@ -46,11 +100,12 @@ jobs:
               libs+=("$candidate")
             fi
           done
-          if [ "${#libs[@]}" -eq 0 ]; then
-            echo "no cdylib produced under target/${{ matrix.target }}/release" >&2
+          if [ "${#libs[@]}" -ne 1 ]; then
+            echo "expected one cdylib under target/${{ matrix.target }}/release, found ${#libs[@]}" >&2
             exit 1
           fi
-          cp "${libs[@]}" "$staging"/
+          cp "${libs[0]}" "$staging"/
+          cp "${libs[0]}" dist/lib/
           cp crates/memless-capi/include/memless.h "$staging"/
           (cd dist && tar -czf "${name}.tar.gz" "${name}")
           echo "archive=dist/${name}.tar.gz" >>"$GITHUB_OUTPUT"
@@ -61,12 +116,184 @@ jobs:
           path: ${{ steps.package.outputs.archive }}
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-lib-${{ matrix.platform }}
+          path: dist/lib/
+          if-no-files-found: error
+
+  libraries:
+    name: libraries
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: memless-lib-*
+          path: dist/downloaded
+
+      - name: Assemble lib/<platform>/ and lib/SHA256SUMS
+        run: |
+          set -euo pipefail
+          for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
+            case "$platform" in
+              darwin-*) file=libmemless_capi.dylib ;;
+              *) file=libmemless_capi.so ;;
+            esac
+            source="dist/downloaded/memless-lib-${platform}/${file}"
+            if [ ! -f "$source" ]; then
+              echo "missing ${file} for ${platform}" >&2
+              exit 1
+            fi
+            mkdir -p "dist/lib/${platform}"
+            cp "$source" "dist/lib/${platform}/${file}"
+          done
+          (cd dist/lib && sha256sum -- */libmemless_capi.* >SHA256SUMS)
+          cat dist/lib/SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-lib
+          path: dist/lib/
+          if-no-files-found: error
+
   publish:
     name: publish
-    needs: build
+    needs: [plan, build, libraries, npm-packages]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: memless-capi-*
+          path: dist/artifacts
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-lib
+          path: dist/lib
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-npm-packages
+          path: dist/packs
+
+      - name: Assemble the release archives
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          find dist/artifacts -mindepth 2 -maxdepth 2 -type f -name '*.tar.gz' -exec cp {} dist/release/ \;
+          cp dist/lib/SHA256SUMS dist/release/memless-lib-SHA256SUMS
+          cp "dist/packs/nascent-tech-memless-${VERSION}.tgz" dist/release/
+
+          php_staging="dist/staging/memless-php-${VERSION}"
+          mkdir -p "$php_staging"
+          cp -R bindings/php/. "$php_staging"/
+          rm -rf "$php_staging"/vendor "$php_staging"/.phpunit.cache "$php_staging"/.phpunit.result.cache
+          (cd dist/staging && zip -r "../release/memless-php-${VERSION}.zip" "memless-php-${VERSION}")
+
+          (cd dist/release && sha256sum -- * >SHA256SUMS)
+          ls -l dist/release
+
+      - name: Publish the GitHub release
+        if: needs.plan.outputs.publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "release ${GITHUB_REF_NAME} already exists; assets are never replaced"
+            exit 0
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/release/*
+
+      - name: Show the release that would be created
+        if: needs.plan.outputs.publish != 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          echo "dry run: would create the GitHub release v${VERSION} with:"
+          cat dist/release/SHA256SUMS
+
+  publish-go:
+    name: publish-go
+    needs: [plan, libraries]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: bindings/go/go.mod
+          cache-dependency-path: bindings/go/go.sum
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-lib
+          path: dist/lib
+
+      - name: Commit the libraries next to the module, off main
+        run: |
+          set -euo pipefail
+          for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
+            cp dist/lib/"${platform}"/libmemless_capi.* bindings/go/lib/"${platform}"/
+          done
+          cp dist/lib/SHA256SUMS bindings/go/lib/SHA256SUMS
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --force bindings/go/lib
+          git commit -q -m "chore(release): bundle the memless library in bindings/go v${VERSION}"
+          git tag -a "bindings/go/v${VERSION}" -m "memless Go module v${VERSION}, with its bundled libraries"
+          git show --stat --format='commit %H%nparent %P%n%s' HEAD
+
+      - name: Test the module with its bundled library, without target/ or MEMLESS_LIB
+        working-directory: bindings/go
+        run: |
+          set -euo pipefail
+          test ! -e ../../target
+          env -u MEMLESS_LIB go test -count=1 ./...
+          find "${XDG_CACHE_HOME:-$HOME/.cache}/memless" -type f -exec ls -l {} \;
+
+      - name: Push the module tag
+        if: needs.plan.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          tag="bindings/go/v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null; then
+            git fetch -q --depth=1 origin "refs/tags/${tag}:refs/remotes/published-go-tag"
+            if git ls-tree -r --name-only refs/remotes/published-go-tag -- bindings/go/lib | grep -q 'libmemless_capi\.'; then
+              echo "${tag} is already published with its libraries; it is never moved"
+              exit 0
+            fi
+            echo "${tag} already exists without bundled libraries; tags are never moved (docs/PUBLISHING.md)" >&2
+            exit 1
+          fi
+          git push origin "refs/tags/${tag}"
+
+      - name: Show the tag that would be pushed
+        if: needs.plan.outputs.publish != 'true'
+        run: |
+          echo "dry run: would push refs/tags/bindings/go/v${VERSION} on commit $(git rev-parse HEAD)"
+          git ls-tree -r -l HEAD -- bindings/go/lib
+
+  npm-packages:
+    name: npm-packages
+    needs: [plan, libraries]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -76,31 +303,217 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: dist/artifacts
+          name: memless-lib
+          path: dist/lib
 
-      - name: Assemble the release archives
+      - name: Assemble the four platform packages and the main package
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          mkdir -p dist/release
-          find dist/artifacts -mindepth 2 -maxdepth 2 -type f -name '*.tar.gz' -exec cp {} dist/release/ \;
+          packs="${GITHUB_WORKSPACE}/dist/packs"
+          mkdir -p "$packs" dist/npm
+          for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
+            staging="dist/npm/${platform}"
+            cp -R "bindings/node/platforms/${platform}" "$staging"
+            cp dist/lib/"${platform}"/libmemless_capi.* LICENSE "$staging"/
+            (cd "$staging" && npm pkg set "version=${VERSION}" && npm pack --pack-destination "$packs")
+          done
+          main=dist/npm/main
+          cp -R bindings/node "$main"
+          cp LICENSE "$main"/
+          (
+            cd "$main"
+            for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
+              npm pkg set "optionalDependencies.@nascent-tech/memless-${platform}=${VERSION}"
+            done
+            npm pack --pack-destination "$packs"
+          )
+          ls -l "$packs"
+          tar -xzOf "${packs}/nascent-tech-memless-${VERSION}.tgz" package/package.json | jq .optionalDependencies
 
-          npm pack --pack-destination dist/release ./bindings/node
+      - name: Test the packages on linux-x64-gnu, without target/ or MEMLESS_LIB
+        run: |
+          set -euo pipefail
+          packs="${GITHUB_WORKSPACE}/dist/packs"
+          project="${RUNNER_TEMP}/npm-smoke"
+          mkdir -p "$project"
+          cd "$project"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund \
+            "${packs}/nascent-tech-memless-${VERSION}.tgz" \
+            "${packs}/nascent-tech-memless-linux-x64-gnu-${VERSION}.tgz"
+          printf 'users:\n  - id: 01H7B2\n    name: Ada\n' >data.yaml
+          env -u MEMLESS_LIB node -e "
+            const { load } = require('@nascent-tech/memless');
+            const db = load('data.yaml');
+            console.log(JSON.stringify(db.query('SELECT name FROM users')));
+            db.release();
+          "
 
-          php_staging="dist/staging/memless-php-${version}"
-          mkdir -p "$php_staging"
-          cp -R bindings/php/. "$php_staging"/
-          rm -rf "$php_staging"/vendor "$php_staging"/.phpunit.cache "$php_staging"/.phpunit.result.cache
-          (cd dist/staging && zip -r "../release/memless-php-${version}.zip" "memless-php-${version}")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-npm-packages
+          path: dist/packs/
+          if-no-files-found: error
 
-          (cd dist/release && sha256sum * >SHA256SUMS)
+  publish-npm:
+    name: publish-npm
+    needs: [plan, npm-packages]
+    if: needs.plan.outputs.publish != 'true' || vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
 
-      - name: Publish the GitHub release
+      - name: Update npm for trusted publishing
+        run: |
+          npm install -g npm@11
+          npm --version
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-npm-packages
+          path: dist/packs
+
+      - name: Publish the platform packages, then the main package
+        if: needs.plan.outputs.publish == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          gh release create "${GITHUB_REF_NAME}" \
-            --title "${GITHUB_REF_NAME}" \
-            --generate-notes \
-            dist/release/*
+          provenance=()
+          if [ -n "${NODE_AUTH_TOKEN}" ]; then
+            provenance=(--provenance)
+          fi
+          for suffix in -darwin-arm64 -darwin-x64 -linux-x64-gnu -linux-arm64-gnu ""; do
+            name="@nascent-tech/memless${suffix}"
+            tgz="dist/packs/nascent-tech-memless${suffix}-${VERSION}.tgz"
+            if [ "$(npm view "${name}@${VERSION}" version 2>/dev/null || true)" = "$VERSION" ]; then
+              echo "${name}@${VERSION} is already published; skipped"
+              continue
+            fi
+            npm publish "$tgz" --access public "${provenance[@]}"
+          done
+
+      - name: Show the packages that would be published
+        if: needs.plan.outputs.publish != 'true'
+        run: |
+          set -euo pipefail
+          for suffix in -darwin-arm64 -darwin-x64 -linux-x64-gnu -linux-arm64-gnu ""; do
+            tgz="dist/packs/nascent-tech-memless${suffix}-${VERSION}.tgz"
+            echo "dry run: would publish @nascent-tech/memless${suffix}@${VERSION} from ${tgz}"
+            tar -tzvf "$tgz"
+          done
+
+  publish-php:
+    name: publish-php
+    needs: [plan, libraries]
+    if: needs.plan.outputs.publish != 'true' || vars.PHP_MIRROR_PUBLISH == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      MIRROR: git@github.com:nascent-tech/memless-php.git
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ffi
+          tools: composer
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-lib
+          path: dist/lib
+
+      - name: Assemble the mirror tree
+        run: |
+          set -euo pipefail
+          mirror=dist/memless-php
+          mkdir -p "$mirror"
+          cp -R bindings/php/. "$mirror"/
+          rm -rf "$mirror"/vendor "$mirror"/tests "$mirror"/phpunit.xml.dist "$mirror"/composer.lock \
+            "$mirror"/.phpunit.cache "$mirror"/.phpunit.result.cache "$mirror"/lib/.gitignore
+          cp LICENSE "$mirror"/LICENSE
+          cp -R dist/lib/. "$mirror"/lib/
+          cp crates/memless-capi/include/memless.h "$mirror"/lib/memless.h
+          (cd "$mirror" && find . -type f | sort)
+
+      - name: Test the mirror on linux-x64-gnu, without target/ or MEMLESS_LIB
+        run: |
+          set -euo pipefail
+          mirror="${GITHUB_WORKSPACE}/dist/memless-php"
+          project="${RUNNER_TEMP}/php-smoke"
+          mkdir -p "$project"
+          cd "$project"
+          jq -n --arg url "$mirror" --arg version "$VERSION" '{
+            require: {"nascent-tech/memless": $version},
+            repositories: [{type: "path", url: $url,
+              options: {symlink: false, versions: {"nascent-tech/memless": $version}}}]
+          }' >composer.json
+          composer install --no-interaction --no-progress
+          printf 'users:\n  - id: 01H7B2\n    name: Ada\n' >data.yaml
+          cat >smoke.php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+          $db = Memless\Instance::load('data.yaml');
+          echo json_encode($db->query('SELECT name FROM users')), PHP_EOL;
+          $db->release();
+          PHP
+          env -u MEMLESS_LIB -u MEMLESS_HEADER php smoke.php
+
+      - name: Commit the mirror tree as an orphan commit
+        working-directory: dist/memless-php
+        run: |
+          set -euo pipefail
+          git init -q
+          git checkout -q --orphan main
+          git add -A
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "memless ${VERSION}" -m "Built from nascent-tech/memless@${GITHUB_SHA}."
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "v${VERSION}" -m "memless ${VERSION}"
+          git log --stat -1
+
+      - name: Push the mirror
+        if: needs.plan.outputs.publish == 'true'
+        working-directory: dist/memless-php
+        env:
+          PHP_MIRROR_DEPLOY_KEY: ${{ secrets.PHP_MIRROR_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PHP_MIRROR_DEPLOY_KEY}" ]; then
+            echo "PHP_MIRROR_PUBLISH is true but the PHP_MIRROR_DEPLOY_KEY secret is missing (docs/PUBLISHING.md)" >&2
+            exit 1
+          fi
+          ssh_dir="${RUNNER_TEMP}/mirror-ssh"
+          mkdir -p "$ssh_dir"
+          chmod 700 "$ssh_dir"
+          printf '%s\n' "$PHP_MIRROR_DEPLOY_KEY" >"$ssh_dir/key"
+          chmod 600 "$ssh_dir/key"
+          curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' >"$ssh_dir/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i ${ssh_dir}/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${ssh_dir}/known_hosts"
+          if git ls-remote --exit-code --tags "$MIRROR" "refs/tags/v${VERSION}" >/dev/null; then
+            echo "v${VERSION} is already in the mirror; it is never moved"
+            exit 0
+          fi
+          git push --force "$MIRROR" main
+          git push "$MIRROR" "refs/tags/v${VERSION}"
+
+      - name: Show the mirror commit that would be pushed
+        if: needs.plan.outputs.publish != 'true'
+        working-directory: dist/memless-php
+        run: |
+          echo "dry run: would force-push main and push tag v${VERSION} to ${MIRROR}"
+          git ls-tree -r -l HEAD
