@@ -1,116 +1,119 @@
 # Memless
 
-Memless is an **in-memory SQL engine driven by a single YAML file**. The file
-holds nothing but data — each table is a list of rows — and Memless guesses the
-rest by itself: the type of every value, which column is the row's identity,
-and which columns point at another table. It loads that file into memory once,
-lets you query and change it in plain SQL text, and rewrites the file every
-time a write or a transaction is validated. The file stays the only source of
-truth; there is no schema to declare and no migration to write.
+**Query and change a YAML file with SQL, from PHP, Go or Node.js.**
 
-One core, written in Rust, is shared by three thin bridges — PHP, Go and
-Node.js — so the same SQL against the same file gives the same answer,
-byte-for-byte, in all three languages. A parity harness
-(`harness/parity/`) enforces that agreement on every change.
+Memless loads a YAML file of test data into memory, lets you run plain SQL
+against it, and writes every accepted change back to the file. There is no
+schema to declare and no server to start: Memless reads the structure from the
+data itself — value types, row identities, and relations between tables.
 
-## What Memless is not
-
-- **Not for production.** It is built for a developer preparing fixtures for
-  automated tests and demos — a single process, a local file, no schema
-  migration story. There is no server, no network protocol, and no
-  coordination between concurrent writers.
-- **Not a server.** Every bridge loads the engine in-process (as a native
-  library); nothing listens on a port, and nothing else can be safely running
-  against the same file at the same time.
-- **Not a general-purpose SQL database.** Only the subset of SQL described
-  below is understood; everything else — including most of what a real
-  database offers — is refused, not silently approximated.
-
-## The example file
-
-A Memless file is plain YAML: a top-level key per table, each table a list of
-field sets (maps of column name to value).
+It is made for **test fixtures and demos**: data you can read, review and diff
+in Git, and query from your tests with the SQL you already know. The same file
+and the same SQL give the same result, and the same error message, in all
+three languages.
 
 ```yaml
+# data.yaml
 users:
-  - id: 01H7B2
+  - id: 1
     name: Ada
-  - id: 01H7B3
+  - id: 2
     name: Grace
 wallets:
-  - id: w_123
-    user_id: 01H7B3
+  - id: w1
+    user_id: 2        # points at users.id = 2, because the column is named user_id
     amount: 100
-  - id: w_124
-    user_id: 01H7B2
-    amount: 250
 ```
 
-## The guessing rules
+```js
+const { load } = require('@nascent-tech/memless');
 
-Memless never reads a schema; it infers structure from the file's own shape,
-and refuses the file when that shape is ambiguous or broken:
+const db = load('data.yaml');
+db.query('SELECT users.name, wallets.amount FROM wallets INNER JOIN users ON wallets.user_id = users.id');
+// { columns: ['users.name', 'wallets.amount'], rows: [['Grace', 100]] }
 
-- **Value types.** Every cell is one of four kinds: text, integer, decimal or
-  boolean. A column that mixes kinds across rows, or a nested value (a list or
-  a map instead of a scalar) inside a cell, is refused.
-- **Primary key.** Every row must carry an `id` column whose value is text or
-  an integer (never a decimal, a boolean, or absent) — Memless refuses a row
-  with no `id`, an `id` of the wrong kind, or a duplicate `id` inside the same
-  table. Comparisons never mix kinds: an integer `id` of `5` and a text `id`
-  of `"5"` are different rows.
-- **Relations.** A column literally named `<name>_id` is guessed as a relation
-  to the `id` column of table `<name>s` (`user_id` → `users`, `wallet_id` →
-  `wallets`). A `<name>_id` value that names no row in that table (a broken
-  relation) refuses the file or the write that would create it.
-- **Everything else about the file's shape** — a table that is not a list, a
-  row that is not a field set, a duplicate table or column key, a key that is
-  not text — is refused too, each with its own message (see *Errors* below).
+db.execute("UPDATE wallets SET amount = 150 WHERE id = 'w1'"); // data.yaml is rewritten
+db.release();
+```
 
-## The SQL subset
+## Contents
 
-Memless accepts exactly this shape of SQL and refuses everything else with the
-same message, in all three languages, as *"… is outside the supported SQL
-subset"*:
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Writing the YAML file](#writing-the-yaml-file)
+- [Supported SQL](#supported-sql)
+- [Writes, transactions and reload](#writes-transactions-and-reload)
+- [Errors](#errors)
+- [Platforms and troubleshooting](#platforms-and-troubleshooting)
+- [When not to use Memless](#when-not-to-use-memless)
+- [Contributing](#contributing)
 
-- **`SELECT`** a list of columns or `*`, `FROM` one table, with an optional
-  **`WHERE`** built from `=`, `<>`, `<`, `<=`, `>`, `>=`, `IS NULL` /
-  `IS NOT NULL` comparisons combined with `AND` / `OR`.
-- **One `JOIN`** — `INNER JOIN <table> ON <a>.<col> = <b>.<col>` — where the
-  `ON` condition is a guessed relation between the two tables (equality on a
-  `<name>_id` column and the target's `id`). Only one `JOIN` per query; every
-  column reference in a joined query must be qualified (`table.column`).
-- **`COUNT(*)`** and **`SUM(<column>)`**, each alone in the projection (never
-  mixed with a plain column, and `SUM` refuses a column that is not numeric
-  for any matched row, or an overflowing sum).
-- **`ORDER BY <column> [ASC|DESC], …`** — one or more column keys, `ASC` by
-  default, qualified (`table.column`) in a joined query. The sort is stable:
-  ties keep the file's order, and a row whose value for that column is absent
-  always sorts last, in both directions. Ordering follows the single
-  comparison rule: a key whose retained rows mix kinds (e.g. text and
-  integer) is refused, naming the two rows, rather than ordered arbitrarily.
-- **`INSERT INTO <table> (<columns…>) VALUES (<values…>)`** — the column list
-  is mandatory; a column count mismatch or a repeated column is refused.
-- **`UPDATE <table> SET <col> = <value>, … [WHERE …]`**.
-- **`DELETE FROM <table> [WHERE …]`**.
-- **`BEGIN`**, **`COMMIT`**, **`ROLLBACK`** — see *Transactions and reload*
-  below.
+## Install
 
-Refused outright, with no partial support: `GROUP BY`, `LIMIT`/`OFFSET`,
-`ORDER BY` with an aggregate, by position (`ORDER BY 1`) or with
-`NULLS FIRST`/`NULLS LAST`, multiple `JOIN`s, `JOIN … USING`, `NATURAL JOIN`,
-a `JOIN` without `ON`, a projection with duplicate output column names, any
-operator besides the six comparisons above (`LIKE`, `IN`, arithmetic, …),
-CTEs, subqueries, window functions, locking clauses, and any statement that is
-not one of those listed above (DDL, `ALTER`, `CREATE`, …).
+Pick your language. Each package ships the native engine for your platform:
+there is nothing else to download or configure.
 
-## One example per language
+| Language | Command | Requires |
+| --- | --- | --- |
+| Node.js | `npm install @nascent-tech/memless` | Node.js 18 or later |
+| PHP | `composer require nascent-tech/memless` | PHP 8.1 or later, with the `ffi` extension enabled |
+| Go | `go get github.com/nascent-tech/memless-go` | Go 1.21 or later; no cgo needed |
 
-Each example opens `data.yaml` (the file shown above), transfers 50 from
-Grace's wallet to Ada's inside a transaction, then rereads the wallets sorted
-by amount.
+Supported platforms: macOS (Apple silicon and Intel) and Linux with glibc 2.39
+or later (x86_64 and aarch64). Windows and musl-based Linux (Alpine) are not
+supported out of the box; see [Platforms and troubleshooting](#platforms-and-troubleshooting).
 
-### Go
+Each language package — we call it a *bridge* to the engine — has its own
+guide, with its full API:
+[Node.js](bindings/node/README.md) · [PHP](bindings/php/README.md) · [Go](bindings/go/README.md).
+
+## Quick start
+
+The three examples below load `data.yaml` from above, move money between two
+wallets inside a transaction, then read the wallets back.
+
+**Node.js**
+
+```js
+const { load } = require('@nascent-tech/memless');
+
+const db = load('data.yaml');
+try {
+  db.begin();
+  db.execute("UPDATE wallets SET amount = 50 WHERE id = 'w1'");
+  db.execute("INSERT INTO wallets (id, user_id, amount) VALUES ('w2', 1, 50)");
+  db.commit(); // data.yaml is rewritten once, here
+
+  const { columns, rows } = db.query('SELECT id, amount FROM wallets ORDER BY amount DESC');
+  console.log(columns, rows); // [ 'id', 'amount' ] [ [ 'w1', 50 ], [ 'w2', 50 ] ]
+} finally {
+  db.release();
+}
+```
+
+**PHP**
+
+```php
+<?php
+
+require 'vendor/autoload.php';
+
+use Memless\Instance;
+
+$db = Instance::load('data.yaml');
+
+$db->begin();
+$db->execute("UPDATE wallets SET amount = 50 WHERE id = 'w1'");
+$db->execute("INSERT INTO wallets (id, user_id, amount) VALUES ('w2', 1, 50)");
+$db->commit(); // data.yaml is rewritten once, here
+
+print_r($db->query('SELECT id, amount FROM wallets ORDER BY amount DESC'));
+// two rows: ['id' => 'w1', 'amount' => 50] and ['id' => 'w2', 'amount' => 50]
+
+$db->release();
+```
+
+**Go**
 
 ```go
 package main
@@ -129,292 +132,204 @@ func main() {
 	}
 	defer db.Release()
 
-	if err := db.Begin(); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := db.Execute("UPDATE wallets SET amount = 50 WHERE id = 'w_123'"); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := db.Execute("UPDATE wallets SET amount = 300 WHERE id = 'w_124'"); err != nil {
-		log.Fatal(err)
-	}
-	if err := db.Commit(); err != nil {
-		log.Fatal(err)
+	check := func(err error) {
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	rows, err := db.Query("SELECT id, amount FROM wallets ORDER BY amount ASC")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(rows.Columns, rows.Rows)
+	check(db.Begin())
+	_, err = db.Execute("UPDATE wallets SET amount = 50 WHERE id = 'w1'")
+	check(err)
+	_, err = db.Execute("INSERT INTO wallets (id, user_id, amount) VALUES ('w2', 1, 50)")
+	check(err)
+	check(db.Commit()) // data.yaml is rewritten once, here
 
-	// re-reads data.yaml from disk into a fresh in-memory state
-	if err := db.Reload(); err != nil {
-		log.Fatal(err)
-	}
+	rows, err := db.Query("SELECT id, amount FROM wallets ORDER BY amount DESC")
+	check(err)
+	fmt.Println(rows.Columns, rows.Rows) // [id amount] [[w1 50] [w2 50]]
 }
 ```
 
-### PHP
+### Using it in tests
 
-```php
-<?php
-
-require 'vendor/autoload.php';
-
-use Memless\Instance;
-
-$db = Instance::load('data.yaml');
-
-$db->begin();
-$db->execute("UPDATE wallets SET amount = 50 WHERE id = 'w_123'");
-$db->execute("UPDATE wallets SET amount = 300 WHERE id = 'w_124'");
-$db->commit();
-
-$rows = $db->query("SELECT id, amount FROM wallets ORDER BY amount ASC");
-print_r($rows);
-
-$db->reload(); // re-reads data.yaml from disk into a fresh in-memory state
-$db->release();
-```
-
-### Node.js
+Memless writes to the file it loaded. In a test, load a **copy** of your
+fixture, so that every test starts from the same data and the original stays
+untouched:
 
 ```js
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { load } = require('@nascent-tech/memless');
 
-const db = load('data.yaml');
-
-db.begin();
-db.execute("UPDATE wallets SET amount = 50 WHERE id = 'w_123'");
-db.execute("UPDATE wallets SET amount = 300 WHERE id = 'w_124'");
-db.commit();
-
-const { columns, rows } = db.query("SELECT id, amount FROM wallets ORDER BY amount ASC");
-console.log(columns, rows);
-
-db.reload(); // re-reads data.yaml from disk into a fresh in-memory state
-db.release();
+function loadFixture(name) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-'));
+  const copy = path.join(dir, path.basename(name));
+  fs.copyFileSync(name, copy);
+  return load(copy);
+}
 ```
 
-## Transactions and reload
+To keep the original instead, open a transaction at the start of the test and
+roll it back at the end: nothing is written until a `COMMIT`.
 
-`BEGIN` opens a transaction on the instance; the writes that follow change
-only its working state, which a `SELECT` inside the transaction already sees.
-`COMMIT` validates the whole working state and rewrites the file once (not at
-all when nothing changed); `ROLLBACK` discards the working state and leaves
-the file untouched. A second `BEGIN` (`a transaction is already open`) and a
-`COMMIT` or `ROLLBACK` with nothing open (`no open transaction`) are refused. A
-write refused inside the transaction leaves it open and usable, while a
-`COMMIT` always closes it: a failed validation leaves memory and the file as
-they were before `BEGIN`.
+## Writing the YAML file
 
-`reload()` (`Reload()` in Go) re-reads the file the instance was loaded from
-and replaces the in-memory state with it, exactly as a fresh load would — use
-it after the file was edited outside Memless. It is refused while a
-transaction is open (`cannot reload while a transaction is open`), and when
-the file would be refused at load (missing, incoherent); either way the old
-state stays in place, readable and writable.
+A Memless file is a YAML map: **each key is a table, each table is a list of
+rows, each row is a map of column names to values.** From that shape alone,
+Memless works out the rest.
+
+| Rule | What Memless expects |
+| --- | --- |
+| **Row identity** | Every row has an `id`, either text or an integer, unique within its table. Text and integer ids never match each other: `5` and `"5"` are two different ids. |
+| **Relations** | A column named `<name>_id` points at the `id` of the table `<name>s`, when that table exists: `user_id` → `users`, `wallet_id` → `wallets`. The plural is always `<name>` + `s`: `category_id` points at a table named `categorys`. When no such table exists, the column is an ordinary value. Every value present in a relation column must name an existing row; a missing value is allowed. |
+| **Values** | Each value is text, an integer, a decimal or a boolean. Lists and maps inside a row are refused. |
+| **Missing values** | A row may leave out any column except `id`. A value of `null` (or `~`) counts as missing. Missing values read back as `null` (`nil` in Go) and match `IS NULL`. |
+| **Types never convert** | An integer (`2`) and a decimal (`2.0`) are two different types, like text and integer. A comparison only matches values of the same type: `WHERE amount > 1` skips rows whose `amount` is `1.5`, and `WHERE amount = 2.0` does not match `2`. Keep one type per column: write `2.0`, not `2`, in a decimal column. |
+| **Mixed types** | A column may hold different types in different rows, but sorting or summing rows of different types is refused, rather than guessed. |
+
+When the file breaks a rule — no `id`, a duplicate `id`, a relation to a row
+that does not exist, a nested value, invalid YAML — `load` refuses it with a
+message that names the table and the row, such as
+`row 2 in "users" has no id` or
+`broken relation "user_id" of row "w2" in "wallets": no row 9 in "users"`.
+
+## Supported SQL
+
+Memless understands a deliberate subset of SQL. Anything outside it is refused
+with `<construct> is outside the supported SQL subset`, never approximated.
+
+| Statement | Supported form |
+| --- | --- |
+| `SELECT` | `SELECT <columns> \| * FROM <table>`, with optional `WHERE`, `ORDER BY` and one `JOIN` |
+| `WHERE` | `=`, `<>`, `<`, `<=`, `>`, `>=`, `IS NULL`, `IS NOT NULL`, combined with `AND`, `OR` and parentheses |
+| `JOIN` | One `INNER JOIN <table> ON <a>.<name>_id = <b>.id`, on a relation Memless recognised; every column is then written `table.column` |
+| `ORDER BY` | One or more columns, each `ASC` (default) or `DESC`. Ties keep the file order; missing values always come last |
+| Aggregates | `SELECT COUNT(*)` or `SELECT SUM(<column>)`, alone in the select list |
+| `INSERT` | `INSERT INTO <table> (<columns>) VALUES (<values>)`; the column list is required |
+| `UPDATE` | `UPDATE <table> SET <column> = <value>, … [WHERE …]` |
+| `DELETE` | `DELETE FROM <table> [WHERE …]` |
+| Transactions | `BEGIN`, `COMMIT`, `ROLLBACK` (also available as methods) |
+
+Not supported: `GROUP BY`, `LIMIT` and `OFFSET`, more than one `JOIN`,
+`JOIN … USING`, `NATURAL JOIN`, `ORDER BY` by position (`ORDER BY 1`) or with
+`NULLS FIRST`/`NULLS LAST`, `LIKE`, `IN`, arithmetic, subqueries, `WITH`,
+window functions, `CREATE`, `ALTER`, `DROP` and any other statement not listed
+above. A `SUM` that overflows is refused too.
+
+A `SELECT` returns the column names and the rows. Query results never contain
+the same column name twice: `SELECT name, name` is refused.
+
+## Writes, transactions and reload
+
+- **Each accepted write is saved immediately.** Outside a transaction, an
+  `INSERT`, `UPDATE` or `DELETE` that changes something rewrites the file
+  before the call returns. A write that changes nothing leaves the file
+  untouched. `execute` returns the number of rows affected.
+- **Transactions group writes.** After `begin`, writes change memory only, and
+  queries already see them. `commit` checks the whole result and writes the
+  file once; `rollback` throws the changes away. If `commit` is refused, the
+  data goes back to its state before `begin`. A refused write inside a
+  transaction leaves the transaction open.
+- **`reload` rereads the file** after something else changed it, exactly as a
+  new `load` would. It is refused while a transaction is open, and a refused
+  reload keeps the current data.
+- **The file is replaced safely.** Memless writes a complete new copy next to
+  the file (`.<name>.memless-tmp`), then renames it over the original, so a
+  crash never leaves a half-written file. Add `.*.memless-tmp` to your
+  `.gitignore`.
+- **One process per file.** Memless does not coordinate writers: do not change
+  the same file from two instances or two processes at once.
+- **Release the instance** when you are done (`release()`, `Release()` in Go),
+  or let PHP's destructor do it.
 
 ## Errors
 
-Every refusal — a broken file, an unsupported statement, an unknown table or
-column, a validation failure on a write, a transaction guard — carries the
-**same message, verbatim, in all three languages**: the core decides the
-wording once, and no bridge is allowed to translate or reword it. A bridge
-only translates the *shape* of the error:
+Every failure is one of two kinds, with the **same message in every
+language**:
 
-- Go returns a `*memless.RefusalError` (domain refusal) or a
-  `*memless.FaultError` (a boundary or internal fault, never a file refusal).
-- PHP throws `Memless\MemlessRefusal` (domain refusal) or
-  `Memless\MemlessFault` (boundary or internal fault).
-- Node throws `MemlessRefusal` (domain refusal) or `MemlessFault` (boundary or
-  internal fault).
+| Kind | Meaning | Node.js | PHP | Go |
+| --- | --- | --- | --- | --- |
+| **Refusal** | Your file or your SQL breaks a rule: an unknown table or column, a broken relation, unsupported SQL, a transaction already open… | `MemlessRefusal` | `Memless\MemlessRefusal` | `*memless.RefusalError` |
+| **Fault** | A misuse of the bridge, such as calling a released instance, or an internal error. The message reads `memless fault (<status>): <message>`. | `MemlessFault` (`.status`) | `Memless\MemlessFault` (`->status`) | `*memless.FaultError` (`.Status`) |
 
-A fault reads the same in all three: `memless fault (<status>): <message>`,
-where `<status>` is the ABI status (`2` for an invalid argument, such as a
-released instance or a NUL byte in the SQL text; `3` for an internal fault),
-also exposed as the fault's `Status` (Go) or `status` (PHP, Node) field. A
-library that cannot be found, or that speaks another ABI version, is reported
-by a plain error (Go), a `\LogicException` (PHP) or an `Error` (Node) on the
-first call that needs it.
+A refusal is a normal outcome that you can assert on in a test:
 
-A refusal is not a bug: `no table "ghosts"`, `no column "ghost" in table
-"users"`, `broken relation "user_id" of row 0 in "wallets": no row w_999 in
-"users"`, `GROUP BY is outside the supported SQL subset`, `a transaction is
-already open` are all ordinary, expected outcomes of malformed SQL or an
-inconsistent file. A **fault** — an invalid handle, a NUL byte in the SQL
-text, an internal panic caught at the FFI boundary — is different: it signals
-a bridge or caller mistake, not a rule of the data model.
+```js
+assert.throws(() => db.query('SELECT nope FROM users'), { message: 'no column "nope" in table "users"' });
+```
 
-## The file rewrite
+If the native library cannot be found, or is of an incompatible version, the
+first call fails with a plain error (`Error` in Node.js, `\LogicException` in
+PHP, `error` in Go) that says what to do.
 
-An accepted write (or a committed transaction) that actually changes the
-state rewrites the file **by substitution**: Memless writes a full new copy of
-the file next to the original, `fsync`s it, then renames it over the original,
-so a reader never observes a half-written file and a crash mid-write leaves
-the original untouched. A write that changes nothing never touches the disk.
+## Platforms and troubleshooting
 
-That rewrite briefly creates a sibling residue file named `.<name>.memless-tmp`
-next to `<name>.yaml`; it is removed by the same rename that completes the
-write. Add `.*.memless-tmp` (or the exact residue names your fixtures use) to
-your project's `.gitignore` so a fixture directory under test never commits a
-leftover temp file.
+The packages include the engine for macOS (Apple silicon, Intel) and for Linux
+with glibc 2.39 or later (x86_64, aarch64), such as Ubuntu 24.04, Debian 13 or
+Fedora 40 and later. Each bridge finds it on its own, in this order:
 
-## Installation
+1. the file named by the `MEMLESS_LIB` environment variable, if it is set —
+   it must exist, there is no fallback;
+2. the library bundled in the package for your platform;
+3. inside a clone of this repository, `target/release/`, then `target/debug/`.
 
-Install the bridge for your language with its own package manager. Each
-package brings the native library for your platform with it, so there is
-nothing to download or configure by hand:
+**Your platform is not covered** — Alpine or another musl-based Linux, an
+older glibc, or a platform whose libc Memless cannot identify: build the
+library yourself and point `MEMLESS_LIB` at it.
 
 ```sh
-npm install @nascent-tech/memless                              # Node.js 18 or later
-composer require nascent-tech/memless                          # PHP 8.1 or later, ffi extension
-go get github.com/nascent-tech/memless-go                      # Go 1.21 or later
+git clone https://github.com/nascent-tech/memless.git
+cd memless
+cargo build --release -p memless-capi   # needs a Rust toolchain
+export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
-The library is bundled for four platforms: macOS on Apple silicon
-(`darwin-arm64`) and on Intel (`darwin-x64`), and Linux with glibc on x86_64
-(`linux-x64-gnu`) and aarch64 (`linux-arm64-gnu`). The Linux libraries are
-built on Ubuntu 24.04 and need glibc 2.39 or later (Ubuntu 24.04 or later, or
-a distribution of the same age); on an older glibc, build the library locally
-and set `MEMLESS_LIB` (see below). How each package carries it:
+You can also download a prebuilt library, `memless-capi-<version>-<target>.tar.gz`,
+from the [GitHub releases](https://github.com/nascent-tech/memless/releases),
+with its checksums in `SHA256SUMS`.
 
-- **npm** — `@nascent-tech/memless` ships `lib/<platform>/` for the four
-  platforms and loads the one that matches your machine; each version is also
-  shown in the mirror repository `nascent-tech/memless-node`. See
-  [`bindings/node/README.md`](bindings/node/README.md).
-- **Composer** — the package ships `lib/<platform>/` for the four platforms,
-  and the C header the FFI extension needs. See
-  [`bindings/php/README.md`](bindings/php/README.md).
-- **Go** — the module `github.com/nascent-tech/memless-go`, published from
-  `bindings/go` by the mirror repository `nascent-tech/memless-go`, embeds the
-  library of the platform you build for (and only that one); on first use it
-  is extracted once into your user cache directory
-  (`memless/<version>-<checksum>/`) and checked against its SHA-256 before
-  every load. Versions up to 0.2.1 were published at
-  `github.com/nascent-tech/memless/bindings/go` and stay there. See
-  [`bindings/go/README.md`](bindings/go/README.md).
+**PHP says the `FFI` class does not exist** — enable the extension:
+`extension=ffi` in `php.ini`. On the command line, FFI is allowed by default
+(`ffi.enable=preload` covers the CLI); for a web server, see the
+[PHP guide](bindings/php/README.md).
 
-All three bridges look for the library in the same order, on the first call
-that needs it (never at import time):
+`MEMLESS_LIB` loads native code into your process: only point it at a library
+you trust.
 
-1. `MEMLESS_LIB`, if it is set — it must name an existing file, or the call
-   fails rather than falling back;
-2. the library the package bundles for the current platform;
-3. `target/release/`, then `target/debug/`, inside a checked-out workspace
-   (`.dylib` before `.so`).
+## When not to use Memless
 
-If none is found, the call fails with a message that tells you to set
-`MEMLESS_LIB`. `MEMLESS_LIB` loads arbitrary native code, like any FFI library
-path: only point it at a library you trust. The bridges require a library of
-ABI version 5.
-
-### Other platforms, or your own build
-
-On Linux with musl or with a libc the bridge cannot tell (no `/usr/bin/ldd`,
-no dynamic loader under `/lib` and, for Node, no diagnostic report) — neither
-has a bundled library —, on a glibc older than 2.39,
-or to use a library you built yourself, set `MEMLESS_LIB` to its path (Windows is not supported).
-Either:
-
-- **build it from source** (needs a Rust toolchain):
-
-  ```sh
-  cargo build --release -p memless-capi
-  ```
-
-  which produces `target/release/libmemless_capi.{dylib,so}`; inside a
-  checked-out workspace every bridge finds it there with no configuration;
-- or **download a release archive** — `memless-capi-<version>-<target>.tar.gz`
-  from the project's GitHub Releases, which also carry the checksums
-  (`SHA256SUMS`, and `memless-lib-SHA256SUMS` for the bundled libraries) — and
-  point `MEMLESS_LIB` at the extracted library (an absolute path is safest).
-
-## Parity and running the tests
-
-The three bridges are held to the **same** behaviour by
-`harness/parity/run.sh`, which replays a shared battery of fixtures, queries,
-writes, transactions and reloads through all three and requires the same issue
-and the same message from each, rewritten file included. Build the cdylib
-first, install the Node bridge's own dependencies (koffi) before the Node
-driver, which links to it by path, install the PHP driver, then run it:
-
-```sh
-cargo build --release -p memless-capi
-npm ci --prefix bindings/node
-npm ci --prefix harness/parity/node
-composer install -d harness/parity/php
-bash harness/parity/run.sh
-```
-
-It uses the most recently built library under `target/` (or `MEMLESS_LIB`) and
-ends, when all three agree, with:
-
-```text
-parity: all fixtures, queries, writes, transactions and reloads agree on all three bridges
-```
-
-Its own regression tests check that it does catch a divergence:
-
-```sh
-for test in harness/parity/tests/detects-*.sh; do bash "$test"; done
-```
-
-Every bridge also carries its own unit tests:
-
-```sh
-# Rust workspace: the four gates
-cargo check --all-targets
-cargo clippy --all-targets -- -D warnings
-cargo test
-cargo build --release
-
-# PHP bridge
-(cd bindings/php && composer install && vendor/bin/phpunit)
-
-# Go bridge
-(cd bindings/go && go test ./...)
-
-# Node bridge
-npm ci --prefix bindings/node
-npm test --prefix bindings/node
-npm run typecheck --prefix bindings/node
-```
-
-## Supported targets
-
-Memless is built and tested for four target families: `aarch64-apple-darwin`,
-`x86_64-apple-darwin`, `x86_64-unknown-linux-gnu` and
-`aarch64-unknown-linux-gnu`, which the packages call `darwin-arm64`,
-`darwin-x64`, `linux-x64-gnu` and `linux-arm64-gnu`. Windows and musl targets
-are not supported. How a release reaches npm, Packagist and the Go module
-proxy is described for maintainers in
-[`docs/PUBLISHING.md`](docs/PUBLISHING.md).
+- **Not for production data.** There is no concurrency control, no
+  durability guarantee beyond the atomic file replacement, and no access
+  control.
+- **Not a server.** The engine runs inside your process; nothing listens on a
+  port.
+- **Not a general SQL database.** It supports the subset above and refuses the
+  rest. If you need `GROUP BY`, several joins or large data, use SQLite or a
+  real database.
 
 ## Contributing
 
-Contributions are welcome: bug reports, fixes, documentation, and ideas
-discussed in an issue first. Everything happens in this repository — the
-core, the three bridges and the parity harness live together here, so that a
-change reaches PHP, Go and Node.js at once. The repositories
-`nascent-tech/memless-php`, `nascent-tech/memless-go` and
-`nascent-tech/memless-node` are mirrors that the release workflow rewrites at
-each version; please do not open issues or pull requests there.
+Contributions are welcome — bug reports, fixes, documentation, and ideas
+discussed in an issue first. Everything happens in this repository: the Rust
+engine, the three bridges and the test harness that keeps them in agreement.
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how the project is organised, setting
-  up, the checks a pull request must pass, and how commits are written.
-- [Open an issue](https://github.com/nascent-tech/memless/issues/new/choose) —
-  a bug report, a feature request or a question.
-- [`SECURITY.md`](SECURITY.md) — report a vulnerability privately, never in a
-  public issue.
-- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — how we treat each other.
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) to set up the project and run the
+  checks.
+- [Open an issue](https://github.com/nascent-tech/memless/issues/new/choose)
+  for a bug, a feature request or a question. Issues labelled
+  [`good first issue`](https://github.com/nascent-tech/memless/labels/good%20first%20issue)
+  are a good start.
+- Report a vulnerability privately, as described in [`SECURITY.md`](SECURITY.md).
+- Follow the [code of conduct](CODE_OF_CONDUCT.md).
 
-Issues labelled
-[`good first issue`](https://github.com/nascent-tech/memless/labels/good%20first%20issue)
-are a good place to start.
+The repositories `nascent-tech/memless-php`, `nascent-tech/memless-go` and
+`nascent-tech/memless-node` are read-only copies published by each release;
+please open issues and pull requests here. Release notes are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). By contributing, you agree that your
-contribution is released under the same license.
+[MIT](LICENSE). By contributing, you agree that your contribution is released
+under the same license.
