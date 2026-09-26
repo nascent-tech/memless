@@ -7,7 +7,7 @@
 *Bloc généré — il se retisse à chaque écriture, ne l'édite pas à la main.*
 <!-- /charpente-navigation -->
 
-> **Statut : constaté sur le code.** **Les paliers 1 à 6 sont livrés (0.2.1 ; la révision « miroir Go » part en 0.3.0)** ; toute divergence entre
+> **Statut : constaté sur le code.** **Les paliers 1 à 6 sont livrés (0.3.0)** ; toute divergence entre
 > ce document et le code est un défaut du document, à corriger dans le document. **Convention de renvoi :** « §X du brief » / « décision N du brief »
 > pointent vers le brief ; un « §X » nu, vers ce document.
 
