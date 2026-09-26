@@ -1,6 +1,6 @@
 {
   "name": "@nascent-tech/memless",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Node.js bridge to the memless C ABI through koffi, without a native addon.",
   "type": "commonjs",
   "main": "src/index.js",
