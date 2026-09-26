@@ -54,32 +54,32 @@ de fichiers sur le fichier YAML, hors du ressort de Memless.
 Le fichier et l'appel FFI sont les deux entrées à traiter strictement.
 
 - **Le fichier YAML** : refuser un YAML invalide, une valeur imbriquée, une clé de premier niveau qui
-  n'est pas une liste de lignes, une ligne sans `id`, un `id` dupliqué, une relation cassée — jamais
-  de chargement partiel (§8.1, §8.2, §13 du brief). Le risque « YAML bomb » (alias/ancres qui
-  explosent en mémoire, fichier démesuré) est **borné par le `Budget` de serde-saphyr** (limites de
-  profondeur, d'alias, de taille) ; ses défauts étant « intentionnellement permissifs », les
-  resserrer pour un fichier de données Memless reste **à faire au plan** (§12.3, question 4-bis).
+  n'est pas une liste de lignes, une clé qui n'est pas un texte, une ligne sans `id`, un `id` dupliqué,
+  une relation cassée — jamais de chargement partiel (§8.1, §8.2, §13 du brief). Le risque « YAML
+  bomb » (alias/ancres qui explosent en mémoire, fichier démesuré) **n'est pas borné** : le budget de
+  `serde-saphyr` (`saturate_options()`) met chaque limite à `usize::MAX` — dette assumée (§12.2) plutôt
+  que resserrée, le fichier venant de la développeuse elle-même, jamais d'une source non fiable.
 - **La frontière FFI** est `unsafe` par nature : c'est là, et seulement là, que la garantie mémoire de
-  Rust ne couvre plus rien. Quatre protections y sont indispensables (dette élevée si l'une manque,
-  §12.2) :
-  1. **Valider chaque entrée** — pointeur non nul, longueur cohérente, chaîne UTF-8 — avant tout
-     usage.
-  2. **Propriété claire des sorties** — toute chaîne ou tout résultat rendu au langage hôte est alloué
-     par le cœur et libéré par une fonction dédiée (`memless_free`) ; jamais libéré par l'hôte, jamais
-     deux fois. Fermer une instance passe de même par une fonction explicite (le brief §8.5 prévoit un
-     « appel explicite de fermeture »).
-  3. **Attraper les paniques** — une panique Rust qui traverse `extern "C"` est un comportement
-     indéfini ; chaque point d'entrée l'enveloppe (`catch_unwind`) et la traduit en erreur.
+  Rust ne couvre plus rien. Quatre protections existent (`memless-capi`) :
+  1. **Valider chaque entrée** — un `path` nul ou non-UTF-8 rend `InvalidArgument`, avant tout usage.
+  2. **Propriété claire des sorties** — tout message rendu au langage hôte est alloué par le cœur et
+     libéré par `memless_free_string` ; jamais libéré par l'hôte, jamais deux fois. Fermer une
+     instance ou un résultat passe par `memless_release` / `memless_result_release`.
+  3. **Attraper les paniques** — chaque point d'entrée C ABI enveloppe son corps dans un `guard`
+     (`catch_unwind`) qui traduit une panique Rust en erreur `Internal`, plutôt que de laisser un
+     comportement indéfini traverser `extern "C"`. Le profil du workspace force `panic = "unwind"`
+     (`Cargo.toml`) : un profil `abort` désarmerait ce garde et arrêterait le processus hôte sur la
+     moindre panique.
   4. **Protéger la table de handles** — le brief ne promet aucune coordination des *données* entre
      acteurs concurrents (§12.2 du brief) ; la sûreté *mémoire* de la table de handles est une autre
-     affaire : deux instances distinctes appelées depuis deux fils (goroutines, worker threads Node)
-     touchent la même table, qui doit donc être protégée par un verrou (ou la bibliothèque déclarée
-     mono-fil, ce qui serait plus pauvre).
+     affaire : elle est protégée par un `Mutex`, pour que deux fils (goroutines, worker threads Node)
+     appelant deux instances distinctes ne corrompent jamais la table elle-même.
 
-Le **texte SQL** n'est pas exécuté tel quel : il passe d'abord par la **garde du sous-ensemble SQL**
-(§4), qui refuse le DDL et le hors-sous-ensemble (décisions 23, 24 du brief). Memless ne « nettoie »
-pas la requête elle-même — le texte vient du code de test, de confiance ; si un test construit du SQL
-depuis une entrée externe, l'assainir est la responsabilité de l'appelant.
+Le **texte SQL** n'est pas exécuté tel quel : il passe d'abord par la garde du sous-ensemble
+(`memless-engine::sql`), qui refuse le DDL et le hors-sous-ensemble (`OutsideSubset` — décisions 23, 24
+du brief). Memless ne « nettoie » pas la requête elle-même — le texte vient du code de test, de
+confiance ; si un test construit du SQL depuis une entrée externe, l'assainir est la responsabilité de
+l'appelant.
 
 ### 10.6 Audit
 

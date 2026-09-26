@@ -93,7 +93,7 @@ Ces mots ont un sens unique dans tout le brief, et le code comme l'architecture 
 | **structure devinée** | ce que Memless déduit des données seules — type de chaque valeur, colonne `id`, relations (§8.1). Jamais appelée « schéma » : aucun schéma n'est déclaré. |
 | **contrainte** | une condition que la structure devinée impose à l'état (un `id` par ligne, unique ; une relation qui pointe vers une ligne existante). |
 | **relation devinée** | une colonne reconnue comme pointant vers une autre table par la convention de nom (§8.1). |
-| **transaction** | un ensemble de changements tout-ou-rien. On **ouvre**, puis on **valide** ou on **abandonne** une transaction — jamais « commit » : ce mot est réservé à Git (§9.1). |
+| **transaction** | un ensemble de changements tout-ou-rien. On **ouvre**, puis on **valide** ou on **abandonne** une transaction — jamais « commit » : ce mot est réservé à Git **dans la prose** ; en SQL, le mot-clé `COMMIT` est le nom standard de « valider » (§9.1). |
 | **cœur**, **pont**, **instance** | le moteur unique et partagé ; l'accès natif d'un langage à ce cœur ; une copie en mémoire indépendante détenue par un appelant (§3.4, §12.2). |
 
 **Deux mots à ne pas confondre, pour une transaction.** Une instruction **refusée** (texte SQL invalide,

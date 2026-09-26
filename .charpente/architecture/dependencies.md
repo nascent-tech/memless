@@ -15,19 +15,18 @@ une dépendance absente est un échec de compilation ou de chargement, pas une p
 
 | Dépendance | Rôle | Intégration | Criticité |
 |---|---|---|---|
-| **GlueSQL** (crate Rust, 0.20.0) | analyse et exécute le texte SQL, en mode sans schéma | liée à la compilation du cœur | **critique** : c'est le moteur SQL. Un défaut ou une régression amont affecte les trois langages à la fois. Version épinglée, évolutions à suivre (§17 du brief) |
-| **serde-saphyr** (1.3.0, repli `serde_yaml_ng` 0.10.0) | lit le fichier, sérialise l'état à ordre stable | liée à la compilation du cœur | **critique** : porte la lecture et l'écriture. Retenu après recherche (`serde_yaml` archivé en mars 2024, `serde_yml` frappé par RUSTSEC-2025-0068) ; maintenu, `Budget` anti-« YAML bomb » configurable. Risque à porter : **mainteneur unique** (§12.2) |
-| **napi-rs** (crate + runtime Node) | expose le cœur à Node/TS | liée à la compilation du pont Node | critique pour le pont Node uniquement |
+| **`sqlparser`** (crate Rust, `=0.54.0`) | analyse syntaxiquement le texte SQL et l'abaisse vers `Statement` | liée à la compilation du cœur | **critique pour l'analyse** ; l'exécution (lire, trier, joindre, agréger, écrire) n'en dépend pas — elle est écrite dans `memless-domain`. Version épinglée, évolutions à suivre (§17 du brief) |
+| **`serde-saphyr`** (`=1.3.0`) | lit le fichier, sérialise l'état à ordre stable | liée à la compilation du cœur | **critique** : porte la lecture et l'écriture. Retenu après recherche (`serde_yaml` archivé en mars 2024, `serde_yml` frappé par RUSTSEC-2025-0068) ; maintenu. Risques à porter : **mainteneur unique** (§12.2), et budget anti-« YAML bomb » **saturé**, non resserré (§10.5, §12.2) |
+| **`koffi`** (paquet npm, ≥ 2.16) | expose le cœur à Node/TS par FFI dynamique | chargée à l'exécution du pont Node | **critique pour le pont Node** ; charge la même `cdylib` que Go et PHP à l'exécution, aucune compilation côté Node |
 | **FFI de PHP** (extension intégrée) | permet à PHP d'appeler la bibliothèque native | activée côté PHP à l'exécution | critique pour le pont PHP ; **non activée par défaut sur certaines distributions Linux** (§17.1 du brief) — à documenter |
-| **purego** (module Go, 0.10.2) | appelle la bibliothèque native sans cgo | liée à la compilation du pont Go | critique pour le pont Go ; **bêta** — repli `cgo` documenté (§5.2 du brief) |
-| **cbindgen** (outil de build) | génère l'en-tête C pour Go et PHP | au moment du build | modérée : outil de construction, remplaçable |
+| **`purego`** (module Go, `v0.10.2`) | appelle la bibliothèque native sans cgo | liée à la compilation du pont Go | critique pour le pont Go |
 
 **Le point de fragilité connu est le pont PHP** (§17.1 du brief) : sur les moteurs comparables, il est
 systématiquement le plus faible. La parade retenue n'est pas un fallback à l'exécution mais une
 **exigence de construction** — bâtir et vérifier ce pont avec le même soin que les deux autres dès le
 premier jour, et le couvrir par le banc de parité (§11) sur chaque plateforme cible. La façon dont le
 binaire natif parvient à chaque écosystème (PHP a besoin du chemin d'un `.so`, un module Go ne
-transporte pas de binaire) est elle-même une décision (§12.3, question 6).
+transporte pas de binaire) est tranchée par la distribution sur GitHub Releases (§12.3, question 6).
 
 Aucune de ces dépendances n'introduit de service à surveiller, de secret à stocker ou de quota à
 gérer : la surface d'exploitation de Memless est vide au sens réseau (§7, observabilité « aucune »).

@@ -10,13 +10,11 @@
 
 | Ce qu'on fait mal | Ce que ça économise | Le seuil auquel ça casse |
 |---|---|---|
-| Deux ponts sur trois — PHP et Go (§8.8) | Un pont natif entier. | **1** développeuse du troisième langage (JavaScript/TypeScript) qui demande à l'essayer, une fois la parité PHP/Go confirmée — 0 écart au relevé de parité (journal des retours). |
-| Le sous-ensemble SQL est réduit à ce que le geste utilise : lecture avec filtre, jointure par relation devinée, compte et somme ; insertion, mise à jour, suppression de lignes. Tout le reste est refusé « hors du sous-ensemble » (§8.3, décision 23) — jamais en silence. | L'exécution d'un SQL large. | **1** refus « hors du sous-ensemble » rencontré par une développeuse sur une requête nécessaire à son propre test (le refus nomme la règle, §10 ; compté au journal des retours). |
-| Pas de rechargement (§8.9) : réinitialiser = restaurer le fichier puis créer une nouvelle instance (§3). | La fonctionnalité §8.9. | Voir §3 : 1 demande explicite au journal des retours. |
-| Les paliers 1 à 3 se démontrent sur une seule machine ; les familles de systèmes retenues par l'architecture n'entrent qu'au palier 4 (§17.1). | Reproduire chaque palier sur chaque famille. | **1** écart entre deux familles sur la batterie du geste (relevé de parité) — le seuil de route de §17.1, §8. |
+| Le sous-ensemble SQL est réduit à ce que le geste utilise : lecture avec filtre, tri, jointure par relation devinée, compte et somme ; insertion, mise à jour, suppression ; ouvrir/valider/abandonner. Recharger passe par un appel natif, hors SQL (§12.2). Tout le reste du SQL est refusé « hors du sous-ensemble » (§8.3, décision 23) — jamais en silence. | L'exécution d'un SQL large. | **1** refus « hors du sous-ensemble » rencontré par une développeuse sur une requête nécessaire à son propre test (le refus nomme la règle, §10 ; compté au journal des retours). |
+| Les familles de systèmes retenues (`ARCHITECTURE.md` §12.3 Q7 : quatre) sont rejouées par la CI à chaque changement ; le fondateur ne les rejoue pas à la main. | Reproduire chaque palier sur chaque famille à la main. | **1** écart entre deux familles sur la batterie du geste (relevé de parité) — le seuil de route de §17.1, §8. |
 | La « charge réelle » de §17.1 est la batterie du geste répétée par le banc, pas une vraie suite d'équipe. | Un banc réaliste. | **1** écart entre langages constaté par une développeuse sur sa propre suite (journal des retours). |
-| Le fichier d'épreuve est celui du §8.1 augmenté d'un second portefeuille (deux tables, quatre lignes), grossi artificiellement pour le banc — pas de vraies fixtures avant le §7. | Collecter des fixtures avant d'avoir un moteur. | **1** fichier réel refusé au chargement par fausse détection, ou **1** relation manquée constatée après coup (pluriel irrégulier, §17.3 b) — journal des retours. |
-| Le banc §17.2 est joué à la main, une fois à chacun des paliers 3 et 4, pas en continu. | L'outillage de mesure d'une exécution continue. | **1** régression de durée découverte au palier 4 alors qu'elle était déjà apparue au palier 3 (un jeu à la main l'aurait vue plus tôt) — relevé du banc. |
+| Le fichier d'épreuve est celui du §8.1 augmenté d'un second portefeuille (deux tables, quatre lignes), grossi artificiellement pour le banc — pas de vraies fixtures avant le §7 bis. | Collecter des fixtures avant d'avoir un moteur. | **1** fichier réel refusé au chargement par fausse détection, ou **1** relation manquée constatée après coup (pluriel irrégulier, §17.3 b) — journal des retours. |
+| Le banc §17.2 est joué à la main, une fois à chacun des paliers 3, 4 et 5, pas en continu. | L'outillage de mesure d'une exécution continue. | **1** régression de durée découverte à un palier alors qu'elle était déjà apparue au précédent (un jeu à la main l'aurait vue plus tôt) — relevé du banc. |
 
 *Le seuil qui dit à partir de quelle taille la réécriture devient lente est, lui, une mesure et non un
 chiffre inventé : il vit au §8, ligne §17.2.*
@@ -25,8 +23,8 @@ chiffre inventé : il vit au §8, ligne §17.2.*
 
 **Circuit fermé** pour les paliers 1 à 4 (le fondateur, le fichier de démonstration, la personne à
 côté) ; **vrais utilisateurs** — **trois** développeuses, sur leurs fixtures déjà suivies par Git — pour
-le §7. Trois est le nombre décidé pour ce MVP : assez pour faire remonter l'essentiel des retours
-d'usage, assez peu pour être réuni ; il fixe le critère de fin (§7) et une route (§8). Pas d'argent, pas
+le §7 bis. Trois est le nombre décidé pour ce MVP : assez pour faire remonter l'essentiel des retours
+d'usage, assez peu pour être réuni ; il fixe le critère d'apprentissage (§7 bis) et une route (§8). Pas d'argent, pas
 de donnée personnelle d'un tiers : les fixtures sont écrites par la développeuse elle-même (§3.4 du
 brief), Memless n'écoute aucun port et n'envoie rien nulle part (§3.4, décision 6). Les garanties
 ci-dessous tiennent dans les deux cas, recopiées sans changement du brief — la réécriture d'un fichier
@@ -110,6 +108,9 @@ propre à un seul des trois écosystèmes.
 - Un changement qui n'a pas atteint le disque ne reste jamais retenu en mémoire — §8.6, §15 décision 18.
 - Une ligne encore référencée par une relation devinée, à la fin d'une transaction validée, n'est jamais
   supprimée ni laissée orpheline par une modification — §8.7.
+- Un rechargement demandé pendant qu'une transaction est ouverte n'a jamais lieu, et un rechargement
+  qui échoue ne vide jamais l'état déjà chargé — §8.9.
+- Une transaction ouverte au moment où l'instance est libérée n'atteint jamais le disque — §8.5.
 - Le fichier réécrit sur le disque n'est jamais lisible par un tiers dans un état intermédiaire, et une
   interruption pendant l'écriture ne le laisse jamais à moitié écrit : c'est le fichier d'origine,
   intact, ou le nouveau, complet — jamais un mélange. Un arrêt brutal du processus entre l'écriture du
@@ -121,6 +122,3 @@ propre à un seul des trois écosystèmes.
   différents — §10.
 - Deux langages qui devinent, depuis les mêmes données, deux structures différentes (deux relations
   différentes, par exemple) ne coexistent jamais sans que ce soit un défaut — §8.8.
-
-*L'interdit du §8.9 (un rechargement pendant une transaction ouverte, un rechargement raté qui viderait
-l'état) est satisfait par l'absence de §8.9 dans ce MVP ; il redevient actif le jour où §8.9 rentre (§3).*

@@ -3,8 +3,8 @@ type: glossaire
 titre: Glossaire — le moteur
 slug: le-moteur
 cree_le: 2026-09-21T15:19:48+0000
-mis_a_jour_le: 2026-09-21T16:00:07+0000
-branche: main
+mis_a_jour_le: 2026-09-26T08:34:48+0000
+branche: docs/deliver-all
 statut: valide
 ---
 
@@ -57,9 +57,16 @@ brief (§) et le cadrage du palier 1.
   l'écriture échoue avant la substitution, il le supprime lui-même ; un résidu hérité d'un plantage
   est écrasé par la création du prochain résidu. Le seul résidu que Memless touche est celui de
   l'écriture en cours. Le brief dit « fichier à part ».
-- **Parité** — sur le même fichier, deux ponts produisent la même issue : même acceptation, ou
-  même refus avec le même message (§10, décision 25). Un écart est un défaut.
+- **Parité** — sur le même fichier, les trois ponts produisent la même issue : même acceptation,
+  ou même refus avec le même message (§10, décision 25). Un écart est un défaut.
 - **Réécriture par substitution** — écrire d'abord un fichier à part, forcer son écriture sur
   le disque, puis le substituer d'un coup, de sorte qu'une coupure laisse l'ancien fichier
   intact ou le nouveau complet (décision 17 ; remplace « réécriture atomique », « atomique »
   exclu §6.1).
+- **Rechargement** — relire le fichier d'origine et remplacer l'état d'une instance vivante, en
+  entier ou pas du tout ; refusé pendant une transaction ouverte ; un échec laisse l'état
+  intact (§8.9).
+- **Tri** — ordonner les lignes d'un résultat selon une ou plusieurs colonnes, croissant par
+  défaut ou décroissant si demandé, stable entre égaux, colonne absente placée en dernier ;
+  refusé si deux lignes du résultat portent, pour la colonne triée, des types différents — deux
+  types ne s'ordonnent jamais (§8.3, décision 34).

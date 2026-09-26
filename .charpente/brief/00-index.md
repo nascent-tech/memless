@@ -2,8 +2,8 @@
 type: brief
 titre: Moteur de base de données en mémoire pilotée par YAML
 cree_le: 2026-08-31T14:52:10+0000
-mis_a_jour_le: 2026-09-21T14:08:15+0000
-branche: hors-depot
+mis_a_jour_le: 2026-09-26T09:06:21+0000
+branche: docs/deliver-all
 statut: valide
 ---
 

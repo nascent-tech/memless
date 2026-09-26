@@ -8,11 +8,11 @@
 ## 1. Le geste qui prouve
 
 **Une développeuse écrit un fichier YAML de deux tables, `users` et `wallets`, sans rien déclarer de
-leur forme ; depuis chacun de deux langages tour à tour — PHP et Go —, son test ouvre une transaction,
-retire 1 000 d'un portefeuille et l'ajoute à un autre, valide, puis relit les soldes en croisant
-`wallets` et `users` ; la personne à côté voit les mêmes résultats dans les deux langages, un `git diff`
-qui ne montre que les deux valeurs changées, et un `DELETE` de l'utilisateur encore référencé refusé —
-avec le même message, nommant la règle, la table et la ligne, dans les deux langages.**
+leur forme ; depuis chacun des trois langages tour à tour — PHP, Go et Node —, son test ouvre une
+transaction, retire 1 000 d'un portefeuille et l'ajoute à un autre, valide, puis relit les soldes en
+croisant `wallets` et `users` ; la personne à côté voit les mêmes résultats dans les trois langages, un
+`git diff` qui ne montre que les deux valeurs changées, et un `DELETE` de l'utilisateur encore référencé
+refusé — avec le même message, nommant la règle, la table et la ligne, dans les trois langages.**
 
 Acteur : l'auteure du fichier et son code appelant (§6 du brief, une seule personne). Déclencheur :
 lancer le test. Résultat observable : les résultats à l'écran, le diff, le refus.
@@ -28,13 +28,12 @@ réécriture, perdre commentaires, mise en forme, un `null` écrit à la main ou
 partir d'elle que le `git diff` du virement ne montre plus que les deux valeurs changées.
 
 Le geste se montre à une personne à côté, sur une seule machine, sans réseau, sans deuxième acteur
-humain : les deux exécutions PHP puis Go ne sont ni deux services ni deux jours. Entre les deux, la
+humain : les trois exécutions ne sont ni trois services ni trois jours. Entre deux d'entre elles, la
 remise à zéro suit la séquence du §3.
 
 ## 2. Ce qui entre, et rien d'autre
 
-**Neuf retenues sur dix** — huit des neuf fonctionnalités du §8 du brief, plus la décisive du §9 ; seule
-sort le rechargement §8.9 (§3). La parité (§8.8) est de plus réduite à deux ponts sur trois (§4).
+**Dix retenues sur dix** — les neuf fonctionnalités du §8 du brief et la décisive du §9 ; rien ne sort.
 
 | La fonctionnalité | Au brief | Ce qui casse dans le geste sans elle |
 |---|---|---|
@@ -45,22 +44,18 @@ sort le rechargement §8.9 (§3). La parité (§8.8) est de plus réduite à deu
 | Regrouper plusieurs écritures en une transaction tout ou rien | §8.5, décisions 9, 15, 16, 29 | Le virement devient deux réécritures : entre les deux, le fichier sur disque porte l'état où l'argent a quitté la première tirelire sans arriver dans la seconde — ce que §5.1 définit comme ce qu'une transaction empêche ; le diff montre deux changements pour un geste. |
 | Toute transaction validée est aussitôt réécrite dans le fichier YAML | §8.6, décisions 3, 5, 17, 18, 19 | Le fichier n'est pas la vérité après le virement (§1) : rien à montrer sur le disque. |
 | Casser une relation devinée est refusé | §8.7, décision 10 | Le `DELETE` de l'utilisateur référencé passe : le refus qui prouve que la relation devinée **protège** n'a pas lieu. |
-| Le même moteur, utilisable nativement dans plusieurs langages — **réduit à deux ponts** | §8.8, §5.1, décisions 11, 25 | « Identique dans deux langages » ne se montre pas ; l'hypothèse §17.1 (parité) n'est pas éprouvée. |
+| Le même moteur, utilisable nativement dans trois langages | §8.8, §5.1, décisions 11, 25 | « Identique dans les trois langages » ne se montre pas ; l'hypothèse §17.1 (parité) n'est pas éprouvée. |
 | L'historique Git comme journal d'audit des données ·décisive· | §9.1, décisions 13, 26, 27, 28 | Sans réécriture stable (ordre des tables, lignes, colonnes), le diff liste tout comme changé : la personne à côté ne peut pas voir que seules deux valeurs ont bougé — la preuve visible que le fichier est la vérité devient illisible, et §17.3 (a) ne se teste pas. |
+| Recharger l'état depuis le fichier, à la demande | §8.9, décision 14 | Une suite qui tient une instance pour toute sa durée ne peut pas revenir au fichier restauré sans recréer un moteur ; la remise à zéro du §3 exigerait une instance par test. |
 
 ## 3. Ce qui sort, et à quelle condition ça rentre
 
-| La fonctionnalité | Au brief | Pourquoi dehors | Ce qui la ferait rentrer |
-|---|---|---|---|
-| Recharger l'état depuis le fichier, à la demande | §8.9, décision 14 | Le geste remet à zéro par les deux gestes que §8.6 nomme déjà — restaurer le fichier (externe, Git), puis aligner la mémoire en créant une nouvelle instance plutôt qu'en rechargeant ; un rechargement coûte la même lecture complète (§8.9 : « exactement comme au premier chargement »), il n'économise rien au banc §17.2. Les interdits §13 qui le concernent sont satisfaits par son absence (§5). | **1** demande explicite, au journal des retours (§8), d'une développeuse dont le harnais de test tient une seule instance pour toute la suite et ne peut pas la recréer entre deux tests. |
+**Rien ne sort.** Aucune fonctionnalité du §8/§9 du brief ne sort du MVP ; les restrictions **à l'intérieur** d'une
+fonctionnalité retenue — étendue du SQL, familles de systèmes, fichier de démonstration — sont au §4.
 
-**La remise à zéro entre l'exécution PHP et l'exécution Go**, faute de rechargement, se fait en trois
-temps, dans cet ordre (le brief avertit qu'une transaction validée après restauration, par une instance
-encore vivante, réécrirait le fichier restauré avec l'ancien état — §8.6, §12.2) : **(1)** observer le
-`git diff` de l'exécution PHP ; **(2)** terminer l'instance PHP — la libérer, elle ne reçoit plus
-d'écriture (§8.5) ; **(3)** restaurer le fichier par Git, puis créer une **nouvelle** instance pour Go.
-Jamais deux instances vivantes sur le même fichier en même temps : le brief ne coordonne pas deux
-instances (§12.2, §14), la séquence l'évite — l'ancienne ne survit pas à la restauration.
-
-Aucune autre fonctionnalité du §8/§9 ne sort ; les restrictions **à l'intérieur** d'une fonctionnalité
-retenue — nombre de ponts, étendue du SQL, familles de systèmes, fichier de démonstration — sont au §4.
+**La remise à zéro entre deux exécutions** se fait ainsi, dans cet ordre (le brief avertit qu'une
+transaction validée après restauration, par une instance encore vivante, réécrirait le fichier restauré
+avec l'ancien état — §8.6, §12.2) : **(1)** observer le `git diff` de l'exécution qui vient de finir ;
+**(2)** restaurer le fichier par Git ; **(3)** `reload` sur l'instance vivante — ou, entre deux langages,
+libérer l'instance et en créer une nouvelle dans le langage suivant. Jamais deux instances vivantes sur
+le même fichier en même temps : le brief ne coordonne pas deux instances (§12.2, §14).

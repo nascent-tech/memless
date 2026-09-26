@@ -40,18 +40,17 @@ ni healthchecks** — ces mécanismes n'auraient rien à protéger. La résilien
 son écriture fichier, et le mécanisme doit tenir jusqu'à la **coupure de courant**, pas seulement au
 plantage du processus :
 
-- **Écriture atomique complète** (décision 17 du brief) : sérialiser tout l'état dans un **temporaire
-  créé dans le même répertoire** que le fichier cible (sinon le `rename` n'est pas atomique) → `fsync`
+- **Réécriture par substitution complète** (décision 17 du brief) : sérialiser tout l'état dans un
+  **temporaire créé dans le même répertoire** que le fichier cible (sinon le `rename` n'est pas
+  atomique) → `fsync`
   du temporaire → `rename` sur le fichier d'origine → `fsync` du répertoire. Une coupure laisse alors
   l'ancien fichier intact ou le nouveau complet, jamais tronqué ni vide.
-- **Nom réservé du temporaire** : un préfixe distinctif (par exemple `.<nom>.memless-tmp`) permet
-  qu'un temporaire laissé par un arrêt brutal soit reconnu. Le brief se contente de « l'ignorer »
-  (§8.6 du brief) ; ce document **propose** en plus de le **nettoyer au chargement suivant**. Une
-  transaction échouée supprime le sien elle-même — la décision 17 du brief (« temporaire non abouti
-  toujours supprimé ») est ainsi tenue, seul un `kill` brutal reportant la suppression. Memless ne
-  committe jamais ce résidu ; le motif de nom est documenté pour que l'équipe l'ajoute à son
-  `.gitignore`, ce qui tient l'engagement de la décision 17 du brief (« aucun résidu visible dans
-  l'historique Git ») jusqu'au nettoyage.
+- **Nom réservé du temporaire** : un préfixe distinctif (`.<nom>.memless-tmp`) permet qu'un temporaire
+  laissé par un arrêt brutal soit reconnu. Le chargement ne le touche jamais (D16) ; l'écriture
+  suivante de la même instance le remplace par le sien. Une transaction échouée supprime le sien
+  elle-même — la décision 17 du brief (« temporaire non abouti toujours supprimé ») est ainsi tenue,
+  seul un `kill` brutal reportant le remplacement à l'écriture suivante. Memless ne committe jamais ce
+  résidu ; le motif de nom est documenté pour que l'équipe l'ajoute à son `.gitignore`.
 - **Tout-ou-rien transactionnel** (§8.5 du brief) : une étape qui échoue n'en laisse aucune atteindre
   le disque.
 - **Annulation en mémoire sur échec disque** (décision 18 du brief) : si l'écriture échoue, le
@@ -63,22 +62,22 @@ Un seul lien existe : la **frontière FFI** entre le langage hôte et le cœur, 
 
 | Lien | Mécanisme | Contrat | Couplage | Livraison |
 |---|---|---|---|---|
-| Pont ↔ cœur | appel de fonction natif (C ABI) | le format d'échange (§12.3, question 2) — texte SQL en entrée, lignes/erreur en sortie | fort et assumé : les trois ponts dépendent du même cœur, par conception (§5.1 du brief) | synchrone, en mémoire, sans perte |
+| Pont ↔ cœur | appel de fonction natif (C ABI) | texte SQL en entrée ; résultat lu cellule par cellule (`memless_result_*`, kinds Absent/Text/Integer/Decimal/Boolean) ; message d'erreur possédé, libéré par `memless_free_string` | fort et assumé : les trois ponts dépendent du même cœur, par conception (§5.1 du brief) | synchrone, en mémoire, sans perte |
 
 Il n'y a **aucun appel entre services ni entre contextes** : le couplage fort des trois ponts au cœur
 n'est pas une dette, c'est la garantie même que les trois langages se comportent à l'identique.
 
 ### 5.5 Flux critiques
 
-1. **Écrire puis persister** (§3.4) : `begin → écritures → garde SQL → commit → invariants → écriture
-   atomique`. Protégé par le tout-ou-rien et l'écriture atomique complète ; l'échec disque annule la
+1. **Écrire puis persister** (§3.4) : `begin → écritures → garde SQL → commit → contraintes → écriture
+   par substitution`. Protégé par le tout-ou-rien et l'écriture par substitution complète ; l'échec disque annule la
    mémoire. C'est le flux le plus proche d'une opération irréversible, et il porte les décisions 5,
    15, 17, 18, 19 du brief.
-2. **Charger et valider** (§3.6) : lecture du fichier → inférence → vérification des trois invariants
+2. **Charger et valider** (§3.6) : lecture du fichier → inférence → vérification des trois contraintes
    → état en mémoire, ou refus complet sans état partiel.
 3. **Recharger** (§3.6, §8.9 du brief) : construire le nouvel état validé, puis basculer d'un coup ;
    un rechargement raté laisse l'état précédent intact. Refusé si une transaction est ouverte.
 
 Aucun de ces flux ne franchit un réseau : il n'y a donc pas d'outbox ni de saga à prévoir (§8.4). La
 frontière transactionnelle est entièrement locale, tenue par le gestionnaire de transaction et
-l'écriture atomique.
+l'écriture par substitution.

@@ -16,65 +16,66 @@ implémentées. La colonne de droite dit ce que chacune changerait dans **cette*
 | Évolution (voir §16 du brief) | Ce que ça changerait ici |
 |---|---|
 | Serveur partagé entre processus/langages | un nouvel adaptateur entrant **réseau** et un état partagé — rompt le « chaque instance sa copie » (décision 6 du brief) |
-| Cascade / mise à `NULL` automatique (en option) | une option sur le cas d'usage d'écriture et le validateur d'invariants (§8.7 du brief) |
+| Cascade / mise à `NULL` automatique (en option) | une option sur le cas d'usage d'écriture et la vérification des contraintes (§8.7 du brief) |
 | API « façon SQL » native par langage | une surface supplémentaire par pont, à tenir en parité |
 | Verrou inter-processus sur un même fichier | un nouveau **port** de verrou de fichier et son adaptateur |
 | Base utilisable en production | remet en cause les hypothèses de taille (§17.2 du brief) et la durabilité |
 | Marque de version dans le format de fichier | un champ de version lu/écrit par l'adaptateur YAML |
-| Écriture octet-pour-octet identique entre langages | une forme canonique partagée par les trois écrivains |
-| Déclaration explicite d'une relation | une entrée de configuration lue par l'inférence (§17.4 du brief) |
+| Déclaration explicite d'une relation | une entrée de configuration lue par l'inférence (§17.3 du brief) |
 | Inventaire de ce que Memless a deviné | un cas d'usage de lecture exposant la structure devinée |
 
 ### 12.2 Dettes
 
 | Dette | Risque | Conséquence |
 |---|---|---|
-| Aucune coordination entre écritures concurrentes (décision 7 du brief) | **moyen** | deux écrivains simultanés : le dernier gagne en silence, le changement perdu ne laisse aucune trace, même dans Git (§9.1 du brief) ; un second chargement peut aussi nettoyer le temporaire d'une écriture en cours et faire échouer son `rename` (§5.3) |
+| Aucune coordination entre écritures concurrentes (décision 7 du brief) | **moyen** | deux écrivains simultanés : le dernier gagne en silence, le changement perdu ne laisse aucune trace, même dans Git (§9.1 du brief) ; deux écritures simultanées de deux instances sur le même fichier partagent aussi le même nom de temporaire `.<nom>.memless-tmp` : la seconde écrase le résidu de la première, dont le `rename` peut alors échouer (§5.3) |
 | Protections de la frontière FFI (§10.5) : validation des entrées, propriété/libération des sorties, `catch_unwind`, verrou sur la table de handles | **élevé** | l'une manquante = corruption mémoire, fuite, double libération ou comportement indéfini — seul endroit hors de la garantie Rust |
-| Robustesse du chargement face à un YAML hostile (§10.5) | **moyen** | un fichier « YAML bomb » ou démesuré peut épuiser la mémoire au chargement ; à borner par le choix de la bibliothèque YAML (§12.3, question 4) |
-| Coût de la réécriture complète du fichier, non mesuré (§17.2 du brief) | **moyen** | si les fixtures grossissent, la réécriture peut devenir le geste le plus lent de la suite ; à trancher par le banc de mesure |
-| Parité réelle du pont PHP sur toutes les plateformes (§17.1 du brief) | **moyen** | PHP pourrait rester citoyen de seconde zone (FFI non activé, comportement divergent) ; prouvé par le banc de parité multi-OS |
-| Divergence possible entre la règle du domaine et GlueSQL après une mise à jour (§4.3) | faible | l'unicité d'`id` / les relations et les comparaisons SQL cessent de coïncider ; couvert par le test de coïncidence (§11.4) |
-| Repli `cgo` non encore écrit si `purego` échoue sur une plateforme (§5.2 du brief) | faible | une plateforme mal supportée par `purego` reste sans pont Go tant que le repli n'est pas implémenté |
-| `serde-saphyr` à mainteneur unique (§7) | faible | une dépendance critique repose sur une seule personne ; le repli `serde_yaml_ng` est identifié si le projet s'arrête |
+| Budget YAML saturé — le « YAML bomb » n'est pas borné (§10.5, `options.rs`) | **moyen** | un fichier démesuré ou à alias profonds peut épuiser la mémoire au chargement ; assumé parce que le fichier vient de la développeuse elle-même, jamais d'une source non fiable |
+| Coût de la réécriture complète du fichier, non mesuré au-delà des fixtures du MVP (§17.2 du brief) | **moyen** | si les fixtures grossissent, la réécriture peut devenir le geste le plus lent de la suite ; à trancher par le banc de mesure |
+| Parité réelle du pont PHP sur toutes les plateformes (§17.1 du brief) | **moyen** | PHP pourrait rester citoyen de seconde zone (FFI non activé, comportement divergent) ; prouvé par le banc de parité multi-OS, en CI |
+| Résolution du binaire natif par `MEMLESS_LIB`/`target/` seulement | **faible** | pas de paquet autonome par plateforme : chaque pont doit trouver ou recevoir le chemin de la `cdylib` lui-même, plutôt que la recevoir embarquée dans son paquet |
+| `serde-saphyr` à mainteneur unique (§7) | faible | une dépendance critique repose sur une seule personne |
 
 ### 12.3 Questions ouvertes
 
-Deux d'entre elles (1 et 4) ont été **tranchées par recherche** ci-dessous ; les autres restent des
-décisions à prendre, avec leurs options et le fait qui les tranche :
+Les huit questions de la roadmap sont désormais **toutes tranchées**, par le code ou par une décision
+humaine datée :
 
-1. **Store GlueSQL — TRANCHÉ (recherche).** Réutiliser `gluesql-memory-storage::MemoryStorage`
-   derrière un *newtype* Memless (voir §8.1) : ses champs sont publics, il conserve l'ordre des lignes,
-   et un Store sur mesure n'apporterait rien de plus — GlueSQL 0.20 range de toute façon les colonnes
-   d'une ligne dans un `BTreeMap` trié. *Sous-décision restante (1-bis)* : capter l'ordre des colonnes
-   (que Memless porte hors de GlueSQL, §8.6) **par table ou par ligne**, et **quand** — au chargement +
-   règle « colonne nouvelle en fin », ou en analysant le littéral de l'`INSERT` dans la garde SQL.
-   *Tranché par* : la conception (`/charpente:design`).
-2. **Format d'échange à la frontière (le contrat de parité).** Options : JSON partagé par les trois
-   ponts (simple, un seul contrat à tester), ou format binaire tagué — une suite d'octets dont un
-   premier champ dit le type de ce qui suit (plus rapide, plus de travail). *Recommandation* : un
-   **contrat unique et partagé** — c'est ce qui rend la parité du §5.1 du brief vérifiable en un seul
-   point. *Tranché par* : le banc de parité et une mesure du coût de sérialisation.
-3. **Chemin de Node.** L'addon napi-rs dépend-il de `memless-core` en Rust, ou lie-t-il `memless-capi`
-   par C ABI (liaison statique = un seul binaire Node, dynamique = addon + `cdylib` à empaqueter) ? Et
-   expose-t-il des types riches ou colle-t-il au contrat partagé ? *Recommandation* : coller au
-   contrat partagé (question 2), quitte à un pont Node moins idiomatique, pour ne pas ouvrir une
-   seconde surface à vérifier — napi-rs **reste** le mécanisme Node (décision 12 du brief). *Tranché
-   par* : la question 2 et une mesure de la taille des binaires.
-4. **Bibliothèque YAML — TRANCHÉ (recherche).** `serde-saphyr` 1.3.0 avec `IndexMap` pour l'ordre des
-   colonnes ; repli `serde_yaml_ng` 0.10.0 (voir §7). `serde_yaml` est archivé, `serde_yml` frappé par
-   RUSTSEC-2025-0068. *Sous-décision restante (4-bis)* : resserrer au plan le `Budget` anti-« YAML
-   bomb » de serde-saphyr, dont les défauts sont permissifs (profondeur ~8–16, alias/ancres à quelques
-   dizaines si Memless n'en émet pas). *Tranché par* : `/charpente:plan`.
-5. **CI/CD.** *Options* : une CI qui compile la bibliothèque native et rejoue le banc de parité sur
-   une **matrice OS × famille de processeurs × langage**. *Fait tranchant* : la liste des cibles
-   (question 7) et le service de CI retenu. *À choisir au plan.*
-6. **Distribution du binaire natif.** Options : embarqué dans le paquet par plateforme (npm
-   `optionalDependencies`, Composer avec binaires, Go `embed`) ou téléchargé après installation.
-   *Fait tranchant* : taille des binaires et politique des registres — c'est le point où le pont PHP
-   des projets comparables devient « tertiaire » (§17.1 du brief).
-7. **Cibles à publier au lancement** (OS × famille de processeurs) et **étendue du sous-ensemble
-   SQL** : détails de conception renvoyés à `/charpente:plan` par le brief (§5.2, §8.3 du brief).
-8. **Snapshot/rollback de l'état en mémoire** pour une transaction : copie complète (simple,
-   coûteuse) ou journal d'annulation (économe, plus complexe). *Tranché par* : le coût mesuré sur les
-   tailles visées (banc de mesure).
+1. **Store — TRANCHÉ (caduque).** GlueSQL est sorti au palier 2 : l'état est
+   `memless_domain::Base` (tables ordonnées, ordre des colonnes porté par `RawDocument`). L'ordre est
+   capté au chargement, par ligne, colonne nouvelle en fin (`base/write/next_position.rs`) — la
+   sous-question 1-bis est tranchée dans le même geste.
+2. **Format d'échange à la frontière — TRANCHÉ.** Pas de JSON, pas de format binaire tagué : accès
+   cellule par cellule par le C ABI (`memless_result_column_count`, `memless_result_cell`, kinds
+   Absent/Text/Integer/Decimal/Boolean, décimaux en `double`, texte emprunté). Le banc de parité
+   compare un rendu canonique (décimaux en bits IEEE-754).
+3. **Chemin de Node — TRANCHÉ (humain, 2026-09-22).** FFI dynamique `koffi` ≥ 2.16 sur la même
+   `memless-capi`, pas d'addon `napi-rs` : un seul binaire natif pour les trois ponts.
+4. **Bibliothèque YAML — TRANCHÉ.** `serde-saphyr` `=1.3.0`, sans `IndexMap` : l'ordre vit dans
+   `RawDocument` (memless-domain). Le budget est **saturé** (`usize::MAX`), pas resserré : le
+   « YAML bomb » n'est pas borné — dette assumée (§12.2), pas une sous-question restante.
+5. **CI/CD — TRANCHÉ.** **GitHub Actions** (`nascent-tech/memless`). Un `ci.yml` sur push/PR, matrice
+   sur les quatre cibles de la question 7 : `cargo check --all-targets`, `cargo clippy --all-targets -- -D
+   warnings`, `cargo test`, `cargo build --release -p memless-capi`, `go test ./...` (Go 1.21),
+   `composer install && vendor/bin/phpunit` (PHP 8.3 + `ext-ffi`), `npm ci && npm test` (Node 24 LTS), puis
+   `bash harness/parity/run.sh` et les tests `tests/detects-*.sh`. Un `release.yml` sur tag `v*`
+   reproduit ces builds et produit les artefacts de la question 6. Le run vert de `ci.yml` sur chaque
+   famille est la preuve ; sa ligne (date, famille, révision, lien du run, verdict) est recopiée dans
+   `.charpente/releves/parite.md` par le fondateur au moment du tag — pas par un step de CI.
+6. **Distribution du binaire natif — TRANCHÉ.** Aucun registre externe : **GitHub Releases** sur tag
+   `vX.Y.Z` — quatre archives `memless-capi-<version>-<cible>.tar.gz` (la cdylib + `memless.h`), un
+   fichier `SHA256SUMS` couvrant tous les assets, plus `nascent-tech-memless-<version>.tgz` (`npm
+   pack`), `memless-php-<version>.zip` (repository Composer `artifact`), et le tag
+   `bindings/go/vX.Y.Z`, posé à la main sur le même commit que `vX.Y.Z` (aucun workflow ne le crée). La
+   résolution de la bibliothèque
+   dans les trois ponts (`MEMLESS_LIB`, sinon `target/` du workspace) ne change pas : la variable est
+   le mode de livraison documenté, pas un paquet autonome par plateforme (dette, §12.2).
+7. **Cibles à publier — TRANCHÉ.** Quatre familles : `aarch64-apple-darwin`, `x86_64-apple-darwin`,
+   `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`. Exclus au lancement : Windows (les ponts ne
+   cherchent que `.dylib`/`.so`) et Linux musl. Sous-ensemble SQL : `SELECT`/`WHERE`/`JOIN` par relation
+   devinée/`COUNT`/`SUM`/`ORDER BY` + `INSERT`/`UPDATE`/`DELETE` + `BEGIN`/`COMMIT`/`ROLLBACK`,
+   identifiants entre guillemets doubles ; `LIMIT`/`OFFSET`/`GROUP BY`/`DISTINCT` restent hors
+   sous-ensemble.
+8. **Snapshot/rollback de l'état en mémoire — TRANCHÉ (palier 4).** Copie complète (`Base::clone()`) à
+   l'ouverture d'une transaction, pas de journal d'annulation. Mesuré au banc
+   (`.charpente/releves/banc.md`) : une transaction de 1 000 écritures coûte 15 ms, un seul `fsync`.

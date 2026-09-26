@@ -8,29 +8,29 @@
 
 ## §7. Stack
 
-Chaque outil est retenu pour ce que le brief exige, jamais pour sa popularité. Les versions citées par
-le brief sont reprises telles quelles ; celles marquées **« à figer au plan »** seront choisies et
-épinglées à `/charpente:plan`, faute de source dans le brief à ce stade.
+Chaque outil est retenu pour ce que le brief exige, jamais pour sa popularité. Les versions ci-dessous
+sont celles constatées dans le code et les manifestes du dépôt.
 
 | Catégorie | Outil et version | Métaphore et justification |
 |---|---|---|
-| Langage du cœur | **Rust** — édition à figer au plan | le langage qui rattrape les erreurs de mémoire avant même de tourner, comme un filet posé sous le trapèze : imposé par le brief (décision 12 du brief) pour un moteur transactionnel, et recommandé par les agences de cybersécurité (§18 du brief) |
-| Moteur SQL | **GlueSQL** (0.20.0, Apache-2.0) | le juriste qui lit et applique le SQL sans rien inventer : réutilisé pour ne pas réécrire la partie la plus risquée d'un moteur ; utilisé **sans schéma déclaré**, seul mode acceptant des types mêlés par colonne (§5.2 du brief) |
-| Lecture/écriture YAML | **serde-saphyr** 1.3.0 + **`IndexMap`** (repli : `serde_yaml_ng` 0.10.0) | l'ouvre-boîte et le copiste du fichier — `serde_yaml` est archivé (mars 2024) ; `serde-saphyr` est maintenu, s'intègre à serde et **borne le « YAML bomb »** par un `Budget` configurable (§10) ; l'ordre des colonnes passe par `IndexMap` côté modèle (décision tranchée, ex-question 4) |
-| Pont Node/TS | **napi-rs** — version à figer au plan (dernière stable vérifiée) | le traducteur qui fait passer le cœur pour une fonction JavaScript ordinaire, sur Node-API stable (§18 du brief) |
-| Pont PHP | **FFI** intégré à PHP — version à figer au plan (brief : ≥ 7.4, §18 du brief) | la porte déjà percée dans PHP depuis 2019 pour appeler une bibliothèque native, sans rien compiler de spécifique à PHP (§5.2 du brief) |
-| Pont Go | **purego** (0.10.2), repli **cgo** | l'appel direct d'une bibliothèque native sans outillage de compilation ; `purego` se dit bêta, d'où `cgo` documenté en repli (§5.2, §18 du brief) |
-| En-tête C | **cbindgen** — version à figer au plan | le plan qui décrit à Go et PHP la forme exacte des fonctions exposées par la bibliothèque compilée |
-| Format de la bibliothèque | **cdylib** `memless-capi` (`.so`/`.dylib`/`.dll`) + **addon** `.node` (napi-rs) | un **cœur** compilé une fois, exposé par deux surfaces minces sans logique dupliquée : `memless-capi` (C ABI, Go/PHP) et l'addon Node — le brief partage le cœur, pas nécessairement un fichier natif unique pour Node (§5.2 du brief, §12.3 question 3) |
-| Tests | **cargo test** + **banc de parité** multi-langages | le contrôle qualité : le banc de parité est le test décisif du §5.1 du brief (même SQL + même état → même résultat dans les trois langages) |
-| Qualité | **rustfmt**, **clippy** | le gabarit et le détecteur de défauts du code Rust |
-| CI/CD | **à choisir** (§12.3, question 5) — matrice OS × langage | l'atelier qui compile la bibliothèque pour chaque plateforme et rejoue le banc de parité |
+| Langage du cœur | **Rust**, édition 2021, toolchain stable | le langage qui rattrape les erreurs de mémoire avant même de tourner, comme un filet posé sous le trapèze : retenu par l'architecture (la décision 12 du brief la lui renvoie) pour un moteur transactionnel, et recommandé par les agences de cybersécurité (§18 du brief) |
+| Analyseur SQL | **`sqlparser`** `=0.54.0` | le grammairien qui découpe le texte SQL en arbre, sans rien exécuter ; l'exécution (lire, trier, joindre, agréger, écrire) est écrite à la main dans `memless-domain`, parce que la règle de comparaison unique et la sémantique de l'absence n'y sont d'aucune bibliothèque générique (§5.2 du brief) |
+| Lecture/écriture YAML | **`serde-saphyr`** `=1.3.0` | l'ouvre-boîte et le copiste du fichier — `serde_yaml` est archivé (mars 2024) ; `serde-saphyr` est maintenu, s'intègre à serde ; l'ordre des colonnes est porté hors de la bibliothèque, par `RawDocument` (`memless-domain::document`), pas par un `IndexMap` de la bibliothèque elle-même ; son budget anti-« YAML bomb » est **saturé** (`usize::MAX`), dette assumée (§12.2) |
+| Pont Node/TS | **`koffi`** (FFI dynamique, ≥ 2.16), Node ≥ 18 | le traducteur qui charge la même `cdylib` que Go et PHP à l'exécution, sans rien compiler côté Node — décision humaine du 2026-09-22, en place de `napi-rs` |
+| Pont PHP | **FFI** intégré à PHP (`ext-ffi`), PHP ≥ 8.1 (testé 8.3 en CI, 8.5 en local) | la porte déjà percée dans PHP depuis 2019 pour appeler une bibliothèque native, sans rien compiler de spécifique à PHP (§5.2 du brief) |
+| Pont Go | **`purego`** `v0.10.2`, Go 1.21 | l'appel direct d'une bibliothèque native sans outillage de compilation, sans `cgo` |
+| En-tête C | **écrit à la main** (`crates/memless-capi/include/memless.h`) | pas de `cbindgen` : la surface C ABI est petite et stable, l'en-tête à jour tient dans un seul fichier maintenu à la main (`FFI_SCOPE "memless"`) |
+| Format de la bibliothèque | **cdylib + staticlib + rlib**, `memless-capi` (`.so`/`.dylib`, jamais `.dll`) | un **cœur** compilé une fois, chargé par les trois ponts sans logique dupliquée ; Windows et le format `.dll` sont exclus au lancement (`ARCHITECTURE.md` §12.3 Q7) |
+| Tests | **`cargo test`** + **banc de parité** multi-langages (`harness/parity/`) | le contrôle qualité : le banc de parité est le test décisif du §5.1 du brief (même SQL + même état → même résultat dans les trois langages) |
+| Qualité | **`rustfmt`**, **`clippy`** (`-D warnings`) | le gabarit et le détecteur de défauts du code Rust |
+| CI/CD | **GitHub Actions** — matrice sur les quatre familles de systèmes retenues (`ARCHITECTURE.md` §12.3 Q7) | l'atelier qui compile la bibliothèque pour chaque plateforme et rejoue le banc de parité sur chaque famille, à chaque push et PR, et publie sur tag |
 | Protocole API | **aucun** | Memless n'expose pas d'API réseau : le seul « protocole » est l'appel FFI en mémoire |
 | Edge/CDN, BFF, broker | **aucun** | ni réseau, ni distribution, ni messagerie — hors sujet pour une bibliothèque embarquée (§4.1) |
 | Observabilité | **aucune au lancement** | pas de service à surveiller ; les erreurs remontent comme valeurs de retour au code appelant, l'audit des données passe par Git (§9.1 du brief) |
-| Cloud | **aucun** | rien à héberger ; la distribution se fait par paquet (npm, Packagist, module Go — §12.3, question 6) |
+| Cloud | **aucun** | rien à héberger ; distribution par **GitHub Releases** sur tag (`ARCHITECTURE.md` §12.3 Q6) |
 
-**Ce que le brief laisse à `/charpente:plan`** : l'étendue exacte du sous-ensemble SQL supporté (§8.3
-du brief), le nombre de combinaisons OS × famille de processeurs à publier au lancement (§5.2 du
-brief), et la bibliothèque YAML précise. Aucun de ces points ne bloque l'architecture ; chacun est un
-choix de mise en œuvre.
+**Sous-ensemble SQL constaté** : lecture avec filtre, tri (`ORDER BY`), jointure par relation devinée,
+compte et somme ; insertion, mise à jour, suppression ; `BEGIN`/`COMMIT`/`ROLLBACK` ; `LIMIT`,
+`OFFSET`, `GROUP BY`, `DISTINCT` restent hors sous-ensemble (refusés « outside the supported SQL
+subset »). Les familles de systèmes publiées au lancement sont les quatre de Q7 ; le rechargement
+(`memless_reload`) est un verbe natif, pas du SQL (§4).

@@ -73,7 +73,8 @@ obligation de maintenance.
   elle, tient : le moteur ne corrompt jamais sa propre mémoire ni ne plante parce que deux fils
   l'appellent (§15, décision 7). Chaque instance garde sa propre copie en mémoire (§3.4) ; ce que
   produit concrètement cette absence de coordination est nommé en §14.
-- Le texte SQL est la seule façon d'interroger ou de modifier l'état au lancement — §8.3, §8.4, §14.
+- Le texte SQL est la seule façon d'interroger ou de modifier l'état ; recharger (§8.9), qui relit le
+  fichier sans rien modifier, est le seul geste qui n'en passe pas par lui — §8.3, §8.4, §14.
 - Casser une relation devinée — par suppression ou par modification — est refusé ; ni suppression en
   cascade, ni mise à `NULL` automatique, au lancement — §8.7, §14.
 - Aucune colonne n'est jamais obligatoire par construction, à l'exception de `id` : sans schéma
