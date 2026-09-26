@@ -12,7 +12,7 @@ in Git, and query from your tests with the SQL you already know. The same file
 and the same SQL give the same result, and the same error message, in all
 three languages.
 
-Full documentation: **<https://nascent-tech.github.io/memless/>**
+Full documentation: **<https://memless.nascent-tech.co>**
 
 ```yaml
 # data.yaml
