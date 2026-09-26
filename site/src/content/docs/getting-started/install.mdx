@@ -1,0 +1,45 @@
+---
+title: Install
+description: Add Memless to a Node.js, PHP or Go project.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Each package ships the native engine for your platform: there is nothing else
+to download or configure.
+
+<Tabs syncKey="lang">
+	<TabItem label="Node.js" icon="seti:javascript">
+		Requires Node.js 18 or later.
+
+		```sh
+		npm install @nascent-tech/memless
+		```
+	</TabItem>
+	<TabItem label="PHP" icon="seti:php">
+		Requires PHP 8.1 or later, with the `ffi` extension enabled.
+
+		```sh
+		composer require nascent-tech/memless
+		```
+	</TabItem>
+	<TabItem label="Go" icon="seti:go">
+		Requires Go 1.21 or later. No cgo needed.
+
+		```sh
+		go get github.com/nascent-tech/memless-go
+		```
+	</TabItem>
+</Tabs>
+
+## Supported platforms
+
+- macOS, Apple silicon and Intel.
+- Linux with glibc 2.39 or later, x86_64 and aarch64 — such as Ubuntu 24.04,
+  Debian 13 or Fedora 40 and later.
+
+Windows and musl-based Linux (Alpine) are not supported out of the box. On
+those, build the library yourself and point the `MEMLESS_LIB` environment
+variable at it: see [Platforms and troubleshooting](../../guides/platforms/).
+
+Next: [Quick start](../quick-start/).
