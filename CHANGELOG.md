@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The documentation site gets its own look: a home page that shows a YAML file, a query and its
   result, the same example in all three languages, and the SQL Memless understands or refuses;
   headings and code in JetBrains Mono, text in Instrument Sans, both served by the site itself.
+- The documentation site serves `llms.txt`, with `llms-full.txt` and `llms-small.txt`, generated from
+  the same pages, so language models can read the documentation in one piece.
 
 ## [0.4.1] — 2026-09-26
 

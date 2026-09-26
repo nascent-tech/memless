@@ -1,12 +1,45 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLlmsTxt from 'starlight-llms-txt';
+
+const llmsDescription = [
+	'Memless loads a YAML file of test data into memory,',
+	'runs a deliberate subset of SQL against it from PHP, Go or Node.js,',
+	'and writes every accepted change back to the file.',
+].join(' ');
+
+const llmsDetails = [
+	'- Install it as `@nascent-tech/memless` (npm), `nascent-tech/memless` (Composer)'
+		+ ' or `github.com/nascent-tech/memless-go` (Go). Each package bundles the native engine.',
+	'- The three languages share one engine: the same file and SQL give the same result'
+		+ ' and the same error message.',
+	'- SQL outside the documented subset is refused with a message, never approximated.'
+		+ ' There is no GROUP BY, LIMIT, LIKE, IN or subquery.',
+	'- Types never convert: `2` and `2.0` are different values, and so are `5` and `"5"`.',
+	'- It is made for test fixtures and demos, not for production data.',
+].join('\n');
 
 export default defineConfig({
 	site: 'https://memless.nascent-tech.co',
 	integrations: [
 		starlight({
 			title: 'Memless',
+			plugins: [
+				starlightLlmsTxt({
+					description: llmsDescription,
+					details: llmsDetails,
+					promote: [
+						'index*',
+						'getting-started/install*',
+						'getting-started/quick-start*',
+						'guides/yaml-file*',
+						'guides/writes-transactions*',
+						'reference/sql*',
+						'reference/errors*',
+					],
+				}),
+			],
 			components: { Hero: './src/components/landing/Hero.astro' },
 			customCss: [
 				'@fontsource-variable/instrument-sans',
