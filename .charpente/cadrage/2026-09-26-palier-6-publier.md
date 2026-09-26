@@ -3,8 +3,8 @@ type: cadrage
 titre: Palier 6 — Publier sur les registres
 slug: palier-6-publier
 cree_le: 2026-09-26T12:11:30+0000
-mis_a_jour_le: 2026-09-26T12:50:37+0000
-branche: feat/publish-registries
+mis_a_jour_le: 2026-09-26T14:57:11+0000
+branche: docs/go-mirror
 statut: valide
 ---
 
@@ -170,3 +170,30 @@ autorité sur toute conception antérieure) :
 des workflows, code des ponts) revient au code, livré par `feat/publish-registries` (0.2.0) ; ce cadrage
 n'en garde que ce qui définit le besoin, le vocabulaire et les décisions au niveau produit, conformément
 à `§5.2` du brief (le choix technique appartient à l'architecture, pas au cadrage).
+
+## Révision du 2026-09-26 — miroir Go
+
+**Pourquoi.** La décision D4 ci-dessus (§10) posait un module Go inchangé
+(`github.com/nascent-tech/memless/bindings/go`), publié par un commit hors `main` du dépôt principal,
+tag `bindings/go/vX.Y.Z`. Deux défauts constatés : ce commit hors branche reste retenu par le tag dans
+**chaque clone** de `nascent-tech/memless` — un `git clone` télécharge les binaires Go de toutes les
+versions publiées, comme le fait déjà le miroir PHP mais cette fois dans le dépôt principal lui-même ;
+et le chemin d'import `github.com/nascent-tech/memless/bindings/go` est lourd pour qui l'importe.
+
+**Décision.** Le module Go est publié par un **dépôt miroir `nascent-tech/memless-go`**, sur le même
+patron que le miroir PHP (`nascent-tech/memless-php`) : commit orphelin par version, tag `vX.Y.Z`,
+`main` du miroir poussé en force, clé de déploiement SSH en écriture limitée à ce seul dépôt. Le module
+change de chemin : `github.com/nascent-tech/memless-go`. Le job `publish-go` qui posait un commit hors
+branche et le tag `bindings/go/*` dans le dépôt principal **disparaît** ; un job d'assemblage
+(`go-package`, sur le patron de `php-package`) prépare l'arbre du miroir, le teste hors du dépôt, avant
+que `publish-go` le pousse.
+
+**Rupture et version.** Changer le chemin d'import casse tout code Go qui importait l'ancien chemin :
+rupture assumée, publiée en **0.3.0** (`BREAKING CHANGE`). Les versions déjà publiées à l'ancien chemin
+(`bindings/go/v0.2.0`, `v0.2.1`) restent en place dans le dépôt principal, jamais supprimées ni
+déplacées ; plus aucun tag `bindings/go/*` n'est créé après cette révision.
+
+**Ce que le propriétaire fait.** Poser le secret **`GO_MIRROR_DEPLOY_KEY`** (clé de déploiement SSH en
+écriture, portée limitée au miroir `nascent-tech/memless-go`) et la variable de dépôt
+**`GO_MIRROR_PUBLISH`** (comme `PHP_MIRROR_PUBLISH`) — tant qu'elle est absente ou fausse, `publish-go`
+est sauté sans faire échouer la CI, à l'identique de R6.

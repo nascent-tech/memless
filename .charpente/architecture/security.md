@@ -99,7 +99,12 @@ identités de dépôt et des jetons, à traiter avec le même soin que le reste.
 - **Clé de déploiement limitée au miroir** : la CI pousse le miroir `nascent-tech/memless-php` par une
   **clé de déploiement SSH en écriture**, dont la portée est ce seul dépôt — jamais une clé ou un
   jeton à portée du dépôt principal `nascent-tech/memless`. Le secret (`PHP_MIRROR_DEPLOY_KEY`) n'est
-  exposé qu'au job `publish-php`.
+  exposé qu'au step de poussée du job `publish-php`.
+- **Deuxième clé de déploiement, limitée au miroir Go** : sur le même patron, la CI pousse le miroir
+  `nascent-tech/memless-go` par une **clé de déploiement SSH en écriture** distincte, dont la portée
+  est ce seul dépôt — jamais une clé ou un jeton à portée du dépôt principal. Le secret
+  (`GO_MIRROR_DEPLOY_KEY`) n'est exposé qu'au step de poussée du job `publish-go`, qui n'a donc plus besoin de
+  `contents: write` sur le dépôt principal.
 - **Jeton npm granulaire temporaire, puis Trusted Publishing** : la toute première publication npm
   s'authentifie par un jeton **granulaire** (portée publish sur `@nascent-tech/*`, Bypass 2FA, ≤ 90
   jours, secret `NPM_TOKEN`), parce que Trusted Publishing ne peut pas amorcer un paquet qui n'existe
@@ -107,7 +112,8 @@ identités de dépôt et des jetons, à traiter avec le même soin que le reste.
   Publishers (OIDC, `id-token: write`) et supprime le jeton : les publications suivantes n'exposent
   plus aucun secret npm de longue durée. Les jobs de publication ont des permissions minimales et
   cloisonnées : `publish` (`contents: write`, pour créer la Release GitHub), `publish-go`
-  (`contents: write`), `publish-npm` (`id-token: write`, `contents: read`), `publish-php`
+  (`contents: read`, la poussée se fait par la clé de déploiement SSH du miroir, jamais par le jeton
+  GitHub Actions), `publish-npm` (`id-token: write`, `contents: read`), `publish-php`
   (`contents: read`) — chaque secret n'est visible que du job qui l'utilise.
 
 ### 10.7 Audit

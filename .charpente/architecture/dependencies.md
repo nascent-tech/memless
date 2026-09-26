@@ -28,8 +28,10 @@ premier jour, et le couvrir par le banc de parité (§11) sur chaque plateforme 
 binaire natif parvient à chaque écosystème est tranchée par la distribution (§12.3, question 6) :
 GitHub Releases, plus, depuis le palier 6, les registres natifs — **npm** (paquets de plateforme en
 `optionalDependencies`), **Packagist** (dépôt miroir alimenté par la CI, PHP a besoin du chemin d'un
-`.so`/`.dylib` livré à côté du paquet), **le proxy Go** (module qui embarque sa bibliothèque par
-`//go:embed`, extraite dans le cache utilisateur et vérifiée par SHA-256 avant chargement).
+`.so`/`.dylib` livré à côté du paquet), **le proxy Go** (module `github.com/nascent-tech/memless-go`
+qui embarque sa bibliothèque par `//go:embed`, publié via un dépôt miroir `nascent-tech/memless-go`
+alimenté par la CI, sur le même patron que le miroir PHP ; extraite dans le cache utilisateur et
+vérifiée par SHA-256 avant chargement).
 
-Aucune de ces dépendances n'introduit de service à surveiller, de secret à stocker ou de quota à
-gérer : la surface d'exploitation de Memless est vide au sens réseau (§7, observabilité « aucune »).
+Aucune de ces dépendances n'introduit de service à surveiller ni de quota à gérer ; les seuls secrets
+sont ceux de la publication, décrits en §10.6 : la surface d'exploitation de Memless est vide au sens réseau (§7, observabilité « aucune »).
