@@ -27,8 +27,32 @@ start.yaml	SELECT COUNT(*) FROM users WHERE id = 'nope'
 start.yaml	SELECT SUM(amount) FROM wallets WHERE id = 'nope'
 start.yaml	SELECT SUM(name) FROM users
 start.yaml	SELECT * FROM wallets JOIN users ON wallets.user_id = users.id
-# ORDER BY is out of subset (Q2); decimals cross the bridge as IEEE bits.
-start.yaml	SELECT * FROM users ORDER BY id
+# Ordering: ASC by default, DESC, several keys, stable ties, a join on a qualified
+# column, rows without the column last in both directions.
+start.yaml	SELECT name FROM users ORDER BY name
+start.yaml	SELECT name FROM users ORDER BY name DESC
+start.yaml	SELECT id, amount FROM wallets ORDER BY amount DESC
+kinds.yaml	SELECT id FROM things ORDER BY third, ratio DESC
+kinds.yaml	SELECT id FROM things ORDER BY third DESC
+start.yaml	SELECT users.name, wallets.amount FROM wallets JOIN users ON wallets.user_id = users.id ORDER BY users.name
+kinds.yaml	SELECT id, label FROM things ORDER BY label
+kinds.yaml	SELECT id, label FROM things ORDER BY label DESC
+# Ordering refusals: two types never order (decision 34), an unknown key, and what
+# stays outside the subset.
+trap.yaml	SELECT * FROM users ORDER BY id
+start.yaml	SELECT * FROM users ORDER BY ghost
+start.yaml	SELECT COUNT(*) FROM users ORDER BY id
+start.yaml	SELECT * FROM users ORDER BY 1
+start.yaml	SELECT * FROM users ORDER BY name NULLS FIRST
+start.yaml	SELECT * FROM users ORDER BY id LIMIT 1
+# Mixed types in a joined column name the two rows in that table's file order
+# (users 1 and 2), not in result order (users 3 then 2).
+order-mixed-join.yaml	SELECT wallets.id FROM wallets JOIN users ON wallets.user_id = users.id ORDER BY users.role
+# The filter drops the divergent row before ordering, so nothing is mixed.
+trap.yaml	SELECT * FROM users WHERE id = 5 ORDER BY id
+# The shape refusal (duplicate header) comes before the mixed-type refusal.
+trap.yaml	SELECT id, id FROM users ORDER BY id
+# Decimals cross the bridge as IEEE bits.
 kinds.yaml	SELECT third FROM things
 kinds.yaml	SELECT SUM(third) FROM things
 # A projection with duplicate output headers is refused by the core (Q2), so both

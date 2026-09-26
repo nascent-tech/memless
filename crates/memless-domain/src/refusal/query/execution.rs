@@ -1,5 +1,5 @@
 use super::QueryRefusal;
-use super::QueryRefusal::{SumNotNumber, SumOverflow};
+use super::QueryRefusal::{OrderMixedTypes, SumNotNumber, SumOverflow};
 
 pub(crate) fn execution_message(refusal: &QueryRefusal) -> Option<String> {
     match refusal {
@@ -7,6 +7,9 @@ pub(crate) fn execution_message(refusal: &QueryRefusal) -> Option<String> {
             "cannot sum {column:?} of {table:?} at row {row}"
         )),
         SumOverflow { table, column } => Some(format!("sum of {column:?} in {table:?} overflows")),
+        OrderMixedTypes { table, column, first, second } => Some(format!(
+            "cannot order by {column:?} of {table:?}: row {first} and row {second} differ in type"
+        )),
         _ => None,
     }
 }

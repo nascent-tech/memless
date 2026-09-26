@@ -9,5 +9,6 @@ pub(crate) fn referenced_columns(query: &Select) -> Vec<&ColumnRef> {
     if let Some(filter) = &query.filter {
         references.extend(columns(filter));
     }
+    references.extend(query.order.iter().map(|key| &key.column));
     references
 }

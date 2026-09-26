@@ -1,4 +1,6 @@
-use memless_domain::query::{Compare, Filter, Items, Join, Op, Select, Statement, Write};
+use memless_domain::query::{
+    ColumnRef, Compare, Direction, Filter, Items, Join, Op, OrderKey, Select, Statement, Write,
+};
 use memless_domain::{QueryRefusal, Scalar};
 use memless_engine::parse;
 
@@ -196,7 +198,6 @@ fn refuses_each_out_of_subset_construct() {
     assert_eq!(construct("SELECT * FROM users HAVING id > 0"), "HAVING");
     assert_eq!(construct("SELECT * FROM users LIMIT 1"), "LIMIT");
     assert_eq!(construct("SELECT * FROM users OFFSET 1 ROWS"), "OFFSET");
-    assert_eq!(construct("SELECT * FROM users ORDER BY id"), "ORDER BY");
     assert_eq!(construct("SELECT DISTINCT id FROM users"), "DISTINCT");
     assert_eq!(construct("SELECT * FROM a LEFT JOIN b ON a.b_id = b.id"), "LEFT JOIN");
     assert_eq!(construct("SELECT * FROM a RIGHT JOIN b ON a.b_id = b.id"), "RIGHT JOIN");
@@ -265,4 +266,72 @@ fn literal_in(clause: &str) -> Scalar {
         Some(Filter::Compare(compare)) => compare.literal,
         other => panic!("expected a comparison, got {other:?}"),
     }
+}
+
+fn key(table: Option<&str>, column: &str, direction: Direction) -> OrderKey {
+    let column = ColumnRef { table: table.map(str::to_string), column: column.to_string() };
+    OrderKey { column, direction }
+}
+
+#[test]
+fn a_select_without_order_by_has_no_order() {
+    assert!(select("SELECT * FROM users").order.is_empty());
+}
+
+#[test]
+fn lowers_order_by_ascending_by_default() {
+    let select = select("SELECT * FROM users ORDER BY role");
+    assert_eq!(select.order, [key(None, "role", Direction::Ascending)]);
+}
+
+#[test]
+fn lowers_explicit_directions_on_several_keys() {
+    let select = select("SELECT id FROM users ORDER BY role DESC, id ASC, \"first name\"");
+    let expected = [
+        key(None, "role", Direction::Descending),
+        key(None, "id", Direction::Ascending),
+        key(None, "first name", Direction::Ascending),
+    ];
+    assert_eq!(select.order, expected);
+}
+
+#[test]
+fn lowers_a_qualified_order_key_in_a_join() {
+    let select = select("SELECT * FROM wallets JOIN users ON wallets.user_id = users.id ORDER BY users.role DESC");
+    assert_eq!(select.order, [key(Some("users"), "role", Direction::Descending)]);
+}
+
+#[test]
+fn lowers_a_qualified_order_key_without_a_join() {
+    let select = select("SELECT * FROM users ORDER BY users.role");
+    assert_eq!(select.order, [key(Some("users"), "role", Direction::Ascending)]);
+}
+
+#[test]
+fn keeps_order_by_next_to_a_filter() {
+    let select = select("SELECT * FROM users WHERE id > 1 ORDER BY id DESC");
+    assert!(select.filter.is_some());
+    assert_eq!(select.order, [key(None, "id", Direction::Descending)]);
+}
+
+#[test]
+fn refuses_each_order_by_construct_outside_the_subset() {
+    assert_eq!(construct("SELECT * FROM users ORDER BY role NULLS FIRST"), "NULLS FIRST");
+    assert_eq!(construct("SELECT * FROM users ORDER BY role DESC NULLS LAST"), "NULLS LAST");
+    assert_eq!(construct("SELECT * FROM users ORDER BY 1"), "ORDER BY position");
+    assert_eq!(construct("SELECT * FROM users ORDER BY id + 1"), "ORDER BY expression");
+    assert_eq!(construct("SELECT * FROM users ORDER BY LOWER(role)"), "ORDER BY expression");
+    assert_eq!(construct("SELECT * FROM users ORDER BY 'role'"), "ORDER BY expression");
+    assert_eq!(construct("SELECT COUNT(*) FROM users ORDER BY id"), "ORDER BY with an aggregate");
+    assert_eq!(construct("SELECT SUM(balance) FROM wallets ORDER BY balance"), "ORDER BY with an aggregate");
+    assert_eq!(construct("SELECT * FROM users ORDER BY a.b.c"), "deeply qualified column");
+    let join = "SELECT * FROM wallets JOIN users ON wallets.user_id = users.id ORDER BY role";
+    assert_eq!(construct(join), "unqualified column in a join");
+}
+
+#[test]
+fn keeps_refusing_paging_next_to_order_by() {
+    assert_eq!(construct("SELECT * FROM users ORDER BY id LIMIT 1"), "LIMIT");
+    assert_eq!(construct("SELECT * FROM users ORDER BY id OFFSET 1 ROWS"), "OFFSET");
+    assert_eq!(construct("SELECT * FROM users ORDER BY id FETCH FIRST 1 ROWS ONLY"), "FETCH");
 }

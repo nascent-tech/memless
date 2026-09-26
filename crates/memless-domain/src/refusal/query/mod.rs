@@ -19,6 +19,7 @@ pub enum QueryRefusal {
     JoinNotRelation { table: String, column: String, target: String },
     SumNotNumber { table: String, column: String, row: RowLabel },
     SumOverflow { table: String, column: String },
+    OrderMixedTypes { table: String, column: String, first: RowLabel, second: RowLabel },
 }
 
 impl fmt::Display for QueryRefusal {

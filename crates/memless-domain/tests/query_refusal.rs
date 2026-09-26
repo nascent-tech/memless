@@ -55,6 +55,20 @@ fn sum_overflow_names_the_column() {
 }
 
 #[test]
+fn order_mixed_types_names_both_rows() {
+    let refusal = QueryRefusal::OrderMixedTypes {
+        table: "wallets".to_string(),
+        column: "balance".to_string(),
+        first: RowLabel::Id(Id::Integer(1)),
+        second: RowLabel::Id(Id::Text("w3".to_string())),
+    };
+    assert_eq!(
+        refusal.to_string(),
+        "cannot order by \"balance\" of \"wallets\": row 1 and row \"w3\" differ in type"
+    );
+}
+
+#[test]
 fn query_refusal_lifts_into_refusal() {
     let refusal: Refusal = QueryRefusal::UnknownTable { table: "ghosts".to_string() }.into();
     assert_eq!(refusal.to_string(), "no table \"ghosts\"");

@@ -9,6 +9,7 @@ mod candidate;
 mod cell;
 mod check_one_column;
 mod check_qualifier;
+mod check_shape;
 mod col;
 mod col_header;
 mod col_row;
@@ -16,7 +17,10 @@ mod col_value;
 mod column_check;
 mod column_rows;
 mod combine;
+mod compare_key;
+mod compare_keys;
 mod count_present;
+mod directed;
 mod distinct_headers;
 mod dispatch_sum;
 mod eval;
@@ -25,7 +29,10 @@ mod find_joined;
 mod has_column;
 mod header_name;
 mod header_table;
+mod held_cells;
 mod holder_label;
+mod holder_rows;
+mod holder_table;
 mod is_id_of;
 mod is_joined_ref;
 mod item_columns;
@@ -38,10 +45,14 @@ mod keep;
 mod known_table;
 mod linked;
 mod matched_plan;
+mod mixed_types;
 mod named_cols;
 mod not_number;
 mod one_col;
+mod one_type;
+mod order;
 mod orientation;
+mod output_headers;
 mod other_name;
 mod overflow;
 mod pair_candidates;
@@ -70,10 +81,12 @@ mod target_table;
 mod targets_id;
 mod to_decimal;
 mod to_integer;
+mod unordered_aggregate;
 
+use check_shape::check_shape;
 use combine::combine;
-use distinct_headers::distinct_headers;
 use keep::keep;
+use order::order;
 use plan::plan;
 use project::project;
 use crate::query::Select;
@@ -83,10 +96,10 @@ use crate::rows::Rows;
 impl super::Base {
     pub fn select(&self, query: &Select) -> Result<Rows, QueryRefusal> {
         let resolved = plan(&self.tables, query)?;
+        check_shape(&resolved, query)?;
         let candidates = combine(&resolved);
         let kept = keep(&resolved, candidates, query);
-        let rows = project(&resolved, query, &kept)?;
-        distinct_headers(&rows)?;
-        Ok(rows)
+        let ordered = order(&resolved, kept, &query.order)?;
+        project(&resolved, query, &ordered)
     }
 }
