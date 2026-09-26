@@ -17,6 +17,7 @@ const affected: number = db.execute("DELETE FROM users WHERE id = '01H7B2'");
 db.begin();
 db.commit();
 db.rollback();
+db.reload();
 db.release();
 
 try {

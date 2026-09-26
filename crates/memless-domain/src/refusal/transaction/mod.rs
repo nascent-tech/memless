@@ -9,6 +9,7 @@ mod message;
 pub enum TransactionRefusal {
     AlreadyOpen,
     NoOpenTransaction,
+    OpenDuringReload,
 }
 
 impl fmt::Display for TransactionRefusal {

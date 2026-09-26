@@ -34,6 +34,7 @@ export class Instance {
   begin(): void;
   commit(): void;
   rollback(): void;
+  reload(): void;
   release(): void;
 }
 

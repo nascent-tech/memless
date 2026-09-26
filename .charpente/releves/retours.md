@@ -8,7 +8,7 @@ statut: vivant
 # Journal des retours (§17.3)
 
 La trace qui écoute les développeuses au lieu de deviner à leur place. Ouvert au palier 1, alimenté
-aux séances du §7 (MVP §6). Il porte deux hypothèses du brief, chacune avec le seuil qui fait
+aux séances du §7 bis (MVP §6). Il porte deux hypothèses du brief, chacune avec le seuil qui fait
 changer de route :
 
 - **§17.3 (a) — les développeuses acceptent qu'un test réécrive le fichier pointé.**

@@ -4,6 +4,7 @@ const writeOutcome = require('./write-outcome');
 const writeDiskOutcome = require('./write-disk-outcome');
 const transactionOutcome = require('./transaction-outcome');
 const transactionDiskOutcome = require('./transaction-disk-outcome');
+const reloadOutcome = require('./reload-outcome');
 
 // Routes a 3-argument invocation (path, sql, mode) to its outcome function.
 function dispatchMode(path, sql, mode) {
@@ -11,6 +12,7 @@ function dispatchMode(path, sql, mode) {
   if (mode === 'write-disk') return writeDiskOutcome(path, sql);
   if (mode === 'transaction') return transactionOutcome(path, sql);
   if (mode === 'transaction-disk') return transactionDiskOutcome(path, sql);
+  if (mode === 'reload') return reloadOutcome(path, sql);
   return '';
 }
 

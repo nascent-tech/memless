@@ -12,10 +12,6 @@ namespace Memless;
  */
 final class Execute
 {
-    private const STATUS_OK = 0;
-
-    private const STATUS_REFUSED = 1;
-
     private const STATUS_INVALID_ARGUMENT = 2;
 
     public static function run(int $handle, string $sql): int
@@ -41,14 +37,8 @@ final class Execute
 
     private static function outcome(int $status, int $affected, string $message): int
     {
-        if ($status === self::STATUS_OK) {
-            return $affected;
-        }
+        EnsureOk::check($status, $message);
 
-        if ($status === self::STATUS_REFUSED) {
-            throw new MemlessRefusal($message);
-        }
-
-        throw new MemlessFault($status, $message);
+        return $affected;
     }
 }

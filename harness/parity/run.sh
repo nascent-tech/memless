@@ -2,8 +2,9 @@
 # Replays every fixture through the PHP bridge, the Go bridge and the Node
 # bridge and requires the same issue and message from all three. Exits 0 when
 # all agree, non-zero with the list of divergences or driver failures otherwise.
-# The queries, writes and transactions parts are sourced from sibling scripts
-# so this launcher stays short; they share diverged, here, and the drivers.
+# The queries, writes, transactions and reloads parts are sourced from
+# sibling scripts so this launcher stays short; they share diverged, here,
+# and the drivers.
 set -uo pipefail
 shopt -s nullglob
 
@@ -114,8 +115,9 @@ rm -f "$residue_before"
 . "$here/queries.sh"
 . "$here/writes.sh"
 . "$here/transactions.sh"
+. "$here/reloads.sh"
 
 if [ "$diverged" -eq 0 ]; then
-	echo "parity: all fixtures, queries, writes and transactions agree on all three bridges"
+	echo "parity: all fixtures, queries, writes, transactions and reloads agree on all three bridges"
 fi
 exit "$diverged"

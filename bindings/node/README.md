@@ -2,7 +2,7 @@
 
 A Node.js bridge to the memless C ABI through [koffi](https://koffi.dev), without
 a native addon. It loads the same `libmemless_capi` cdylib as the Go and PHP
-bridges and speaks the same contract (ABI version 4), so the three stay in
+bridges and speaks the same contract (ABI version 5), so the three stay in
 parity from a single shared surface.
 
 ## Surface
@@ -18,6 +18,9 @@ const affected = db.execute("UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'")
 db.begin();                                   // BEGIN / COMMIT / ROLLBACK
 db.execute("DELETE FROM wallets WHERE id = 'w_123'");
 db.commit();
+
+db.reload();                                  // re-reads the file, refused if
+                                               // a transaction is open
 
 db.release();
 ```

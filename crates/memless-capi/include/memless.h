@@ -9,7 +9,7 @@ typedef int32_t MemlessStatus;
 /* 0 = Absent, 1 = Text, 2 = Integer, 3 = Decimal, 4 = Boolean */
 typedef int32_t MemlessKind;
 
-/* ABI version 4. */
+/* ABI version 5. */
 uint32_t memless_abi_version(void);
 
 /*
@@ -65,6 +65,20 @@ MemlessStatus memless_query(MemlessHandle handle, const char *sql, MemlessResult
  * mid-transaction discards the working state.
  */
 MemlessStatus memless_execute(MemlessHandle handle, const char *sql, uint64_t *out_affected, char **out_message);
+
+/*
+ * Re-reads the file the instance was loaded on and replaces the in-memory
+ * state with it, exactly as memless_load would build it. When `out_message`
+ * is non-null it is always written: NULL on Ok, otherwise an owned message the
+ * caller must release with memless_free_string. An unknown handle yields
+ * InvalidArgument. Refused, with the state left intact and the instance still
+ * usable: while a transaction is open on the handle, or when the file would be
+ * refused by memless_load (same messages). On Ok nothing is written to disk;
+ * results already obtained stay valid (they are independent copies). Like
+ * memless_execute, a reload holds the process-wide lock for its duration.
+ * `out_message` may be null; a null pointer is never written through.
+ */
+MemlessStatus memless_reload(MemlessHandle handle, char **out_message);
 
 /* Number of columns / rows in the result; 0 for an unknown result. */
 uint64_t memless_result_column_count(MemlessResult result);

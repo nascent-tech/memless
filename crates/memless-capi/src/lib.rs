@@ -10,6 +10,7 @@ use crate::outcome::Outcome;
 use crate::payload::Payload;
 use crate::query_compute::query_compute;
 use crate::read_cell::read_cell;
+use crate::reload_compute::reload_compute;
 use crate::results::{discard_result, with_result};
 use crate::write::write_outcome;
 
@@ -31,10 +32,12 @@ mod prepare;
 mod prepared;
 mod query_compute;
 mod read_cell;
+mod reload_compute;
 mod resolve_cell;
 mod resolved;
 mod results;
 mod run_query;
+mod run_reload;
 mod status;
 mod write;
 mod write_boolean;
@@ -46,7 +49,7 @@ pub use ffi::{guard, own_message};
 pub use kind::MemlessKind;
 pub use status::{MemlessHandle, MemlessResult, MemlessStatus};
 
-const ABI_VERSION: u32 = 4;
+const ABI_VERSION: u32 = 5;
 
 #[no_mangle]
 pub extern "C" fn memless_abi_version() -> u32 {
@@ -95,6 +98,19 @@ pub unsafe extern "C" fn memless_execute(
 ) -> MemlessStatus {
     let outcome = guard(Outcome::internal(), || unsafe { execute_compute(handle, sql) });
     write_outcome(out_affected, out_message, outcome)
+}
+
+/// Reloads the instance behind `handle` from its file. See `include/memless.h` for the contract.
+///
+/// # Safety
+/// `out_message` follows the header's contract.
+#[no_mangle]
+pub unsafe extern "C" fn memless_reload(
+    handle: MemlessHandle,
+    out_message: *mut *mut c_char,
+) -> MemlessStatus {
+    let outcome = reload_compute(handle);
+    write_outcome(ptr::null_mut(), out_message, outcome)
 }
 
 #[no_mangle]

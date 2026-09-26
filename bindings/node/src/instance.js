@@ -2,6 +2,7 @@
 
 const runQuery = require('./query');
 const runExecute = require('./execute');
+const runReload = require('./reload');
 const { native } = require('./library');
 
 const BEGIN = 'BEGIN';
@@ -32,6 +33,10 @@ class Instance {
 
   rollback() {
     runExecute(this.handle, ROLLBACK);
+  }
+
+  reload() {
+    runReload(this.handle);
   }
 
   release() {
