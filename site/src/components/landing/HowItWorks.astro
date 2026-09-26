@@ -2,7 +2,6 @@
 	<h2 id="how">Three steps, no setup</h2>
 	<ol>
 		<li>
-			<span class="number">01</span>
 			<h3>Write the file</h3>
 			<p>
 				Each key is a table, each table a list of rows. Memless reads value types, row ids and
@@ -10,15 +9,13 @@
 			</p>
 		</li>
 		<li>
-			<span class="number">02</span>
 			<h3>Query it with SQL</h3>
 			<p>
-				SELECT with WHERE, ORDER BY and one INNER JOIN, COUNT and SUM, INSERT, UPDATE, DELETE, and
-				transactions. Anything else is refused, never approximated.
+				Use the SQL you already know. A statement Memless does not support is refused with a message
+				that names it, never approximated.
 			</p>
 		</li>
 		<li>
-			<span class="number">03</span>
 			<h3>Changes go back to the file</h3>
 			<p>
 				Every accepted write rewrites the file, replaced atomically so a crash never leaves it
@@ -50,19 +47,19 @@
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 1.5rem;
 	}
+	ol {
+		counter-reset: step;
+	}
 	li {
-		padding: 2rem;
-		border-radius: 1rem;
-		background: var(--ml-panel);
-		border: 1px solid var(--ml-panel-border);
+		counter-increment: step;
+		padding-top: 1.5rem;
+		border-top: 2px solid var(--sl-color-white);
 		display: flex;
 		flex-direction: column;
-		gap: 0.875rem;
+		gap: 0.75rem;
 	}
-	.number {
-		font-family: var(--__sl-font-mono);
-		font-size: var(--sl-text-sm);
-		font-weight: 700;
+	h3::before {
+		content: counter(step) '. ';
 		color: var(--sl-color-text-accent);
 	}
 	h3 {
@@ -84,8 +81,8 @@
 		ol {
 			grid-template-columns: minmax(0, 1fr);
 		}
-		li {
-			padding: 1.25rem;
+		ol {
+			gap: 2rem;
 		}
 	}
 </style>

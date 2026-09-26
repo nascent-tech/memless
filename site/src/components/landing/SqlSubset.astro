@@ -1,7 +1,7 @@
 ---
 const understood = [
 	'SELECT … FROM … WHERE … ORDER BY',
-	'one INNER JOIN on a known relation',
+	'one INNER JOIN on a <name>_id relation',
 	'COUNT(*) and SUM(column)',
 	'INSERT, UPDATE, DELETE',
 	'BEGIN, COMMIT, ROLLBACK',
@@ -34,7 +34,7 @@ const refused = [
 			</ul>
 		</div>
 		<div class="column refused">
-			<h3>Refused, never guessed</h3>
+			<h3>Refused, never approximated</h3>
 			<ul>
 				{refused.map((item) => (
 					<li>
