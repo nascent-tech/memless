@@ -4,26 +4,34 @@ A Go bridge to the memless C ABI through [purego](https://github.com/ebitengine/
 — no cgo, no build step besides the pure-Go module. It loads the same
 `libmemless_capi` cdylib as the PHP and Node bridges and speaks the same
 contract (ABI version 5), so the three stay in parity from a single shared
-surface. See the [project README](../../README.md) for what memless is, the
-guessing rules and the supported SQL subset.
+surface. See the
+[project README](https://github.com/nascent-tech/memless#readme) for what
+memless is, the guessing rules and the supported SQL subset.
 
 ## Install
 
 ```sh
-go get github.com/nascent-tech/memless/bindings/go@vX.Y.Z
+go get github.com/nascent-tech/memless-go
 ```
 
-That is all: from `v0.2.0` on, the module carries the native library, so
-there is nothing to download or configure. Go 1.21 or later, on macOS
-(`darwin-arm64`, `darwin-x64`) or Linux with glibc (`linux-x64-gnu`,
-`linux-arm64-gnu`); elsewhere, see [The cdylib](#the-cdylib).
+That is all: the module carries the native library, so there is nothing to
+download or configure. Go 1.21 or later, on macOS (`darwin-arm64`,
+`darwin-x64`) or Linux with glibc (`linux-x64-gnu`, `linux-arm64-gnu`);
+elsewhere, see [The cdylib](#the-cdylib).
 
-Go resolves `vX.Y.Z` from the repository tag `bindings/go/vX.Y.Z`, which the
-release workflow puts on a commit next to the release tag `vX.Y.Z`: the same
-sources plus the four libraries under `lib/<platform>/` and their
-`lib/SHA256SUMS`. That commit never lands on `main`, which carries no binary.
-Your program embeds the library of the platform it is built for, and only
-that one (about 5 MB); `v0.1.x` modules carried none.
+The module is published from `bindings/go` of
+[nascent-tech/memless](https://github.com/nascent-tech/memless) into the
+mirror repository `nascent-tech/memless-go`, which the release workflow fills
+at each version with these sources and the four libraries under
+`lib/<platform>/` and their `lib/SHA256SUMS`, as a single commit tagged
+`vX.Y.Z`. The main repository carries no binary. Your program embeds the
+library of the platform it is built for, and only that one (about 5 MB).
+
+Versions up to 0.2.1 were published at
+`github.com/nascent-tech/memless/bindings/go` (tags `bindings/go/vX.Y.Z` of
+the main repository) and stay there; from 0.3.0 on, the module path is
+`github.com/nascent-tech/memless-go`. To move, replace the import path and
+run `go get github.com/nascent-tech/memless-go`.
 
 ## Surface
 
@@ -34,7 +42,7 @@ import (
 	"fmt"
 	"log"
 
-	memless "github.com/nascent-tech/memless/bindings/go"
+	memless "github.com/nascent-tech/memless-go"
 )
 
 func main() {
@@ -128,6 +136,11 @@ point it at a library you trust.
 
 ## Running the tests
 
+The tests live in `bindings/go` of the main repository,
+[nascent-tech/memless](https://github.com/nascent-tech/memless); the mirror
+does not carry them:
+
 ```sh
-go test ./...
+cargo build -p memless-capi
+cd bindings/go && go test ./...
 ```

@@ -230,9 +230,91 @@ jobs:
           path: dist/memless-php-${{ needs.plan.outputs.version }}.zip
           if-no-files-found: error
 
+  go-package:
+    name: go-package
+    needs: [plan, libraries]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: bindings/go/go.mod
+          cache-dependency-path: bindings/go/go.sum
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-lib
+          path: dist/lib
+
+      - name: Assemble the Go module tree
+        run: |
+          set -euo pipefail
+          package="dist/memless-go-${VERSION}"
+          mkdir -p "$package"
+          cp -R bindings/go/. "$package"/
+          rm -f "$package"/*_test.go "$package"/*.test "$package"/lib/.gitignore "$package"/lib/*/README.md
+          cp LICENSE "$package"/LICENSE
+          cp -R dist/lib/. "$package"/lib/
+          (cd "$package" && find . -type f | sort)
+          (cd "$package"/lib && sha256sum -c SHA256SUMS)
+          cd "$package"
+          test "$(go list -m)" = github.com/nascent-tech/memless-go
+          for platform in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+            GOOS="${platform%/*}" GOARCH="${platform#*/}" go vet ./...
+          done
+
+      - name: Test the module on linux-x64-gnu, without target/ or MEMLESS_LIB
+        run: |
+          set -euo pipefail
+          test ! -e target
+          package="${GITHUB_WORKSPACE}/dist/memless-go-${VERSION}"
+          project="${RUNNER_TEMP}/go-smoke"
+          mkdir -p "$project"
+          cd "$project"
+          go mod init memless-go-smoke
+          go mod edit -require="github.com/nascent-tech/memless-go@v${VERSION}" \
+            -replace="github.com/nascent-tech/memless-go=${package}"
+          printf 'users:\n  - id: 01H7B2\n    name: Ada\n' >data.yaml
+          cat >main.go <<'GO'
+          package main
+
+          import (
+              "fmt"
+              "log"
+
+              memless "github.com/nascent-tech/memless-go"
+          )
+
+          func main() {
+              db, err := memless.Load("data.yaml")
+              if err != nil {
+                  log.Fatal(err)
+              }
+              defer db.Release()
+              rows, err := db.Query("SELECT name FROM users")
+              if err != nil {
+                  log.Fatal(err)
+              }
+              fmt.Println(rows.Columns, rows.Rows)
+          }
+          GO
+          go mod tidy
+          env -u MEMLESS_LIB go build -trimpath -o smoke .
+          env -u MEMLESS_LIB ./smoke
+          find "${XDG_CACHE_HOME:-$HOME/.cache}/memless" -type f -exec ls -l {} \;
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-go-tree
+          path: dist/memless-go-${{ needs.plan.outputs.version }}/
+          if-no-files-found: error
+
   publish:
     name: publish
-    needs: [plan, build, libraries, npm-packages, php-package]
+    needs: [plan, build, libraries, npm-packages, php-package, go-package]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -295,71 +377,6 @@ jobs:
         run: |
           echo "dry run: would create the GitHub release v${VERSION} with:"
           cat dist/release/SHA256SUMS
-
-  publish-go:
-    name: publish-go
-    needs: [plan, libraries]
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ needs.plan.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: bindings/go/go.mod
-          cache-dependency-path: bindings/go/go.sum
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: memless-lib
-          path: dist/lib
-
-      - name: Commit the libraries next to the module, off main
-        run: |
-          set -euo pipefail
-          for platform in darwin-arm64 darwin-x64 linux-x64-gnu linux-arm64-gnu; do
-            cp dist/lib/"${platform}"/libmemless_capi.* bindings/go/lib/"${platform}"/
-          done
-          cp dist/lib/SHA256SUMS bindings/go/lib/SHA256SUMS
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add --force bindings/go/lib
-          git commit -q -m "chore(release): bundle the memless library in bindings/go v${VERSION}"
-          git tag -a "bindings/go/v${VERSION}" -m "memless Go module v${VERSION}, with its bundled libraries"
-          git show --stat --format='commit %H%nparent %P%n%s' HEAD
-
-      - name: Test the module with its bundled library, without target/ or MEMLESS_LIB
-        working-directory: bindings/go
-        run: |
-          set -euo pipefail
-          test ! -e ../../target
-          env -u MEMLESS_LIB go test -count=1 ./...
-          find "${XDG_CACHE_HOME:-$HOME/.cache}/memless" -type f -exec ls -l {} \;
-
-      - name: Push the module tag
-        if: needs.plan.outputs.publish == 'true'
-        run: |
-          set -euo pipefail
-          tag="bindings/go/v${VERSION}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null; then
-            git fetch -q --depth=1 origin "refs/tags/${tag}:refs/remotes/published-go-tag"
-            if git ls-tree -r --name-only refs/remotes/published-go-tag -- bindings/go/lib | grep -q 'libmemless_capi\.'; then
-              echo "${tag} is already published with its libraries; it is never moved"
-              exit 0
-            fi
-            echo "${tag} already exists without bundled libraries; tags are never moved (docs/PUBLISHING.md)" >&2
-            exit 1
-          fi
-          git push origin "refs/tags/${tag}"
-
-      - name: Show the tag that would be pushed
-        if: needs.plan.outputs.publish != 'true'
-        run: |
-          echo "dry run: would push refs/tags/bindings/go/v${VERSION} on commit $(git rev-parse HEAD)"
-          git ls-tree -r -l HEAD -- bindings/go/lib
 
   npm-packages:
     name: npm-packages
@@ -520,6 +537,7 @@ jobs:
         working-directory: dist/memless-php
         env:
           PHP_MIRROR_DEPLOY_KEY: ${{ secrets.PHP_MIRROR_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${PHP_MIRROR_DEPLOY_KEY}" ]; then
@@ -531,7 +549,7 @@ jobs:
           chmod 700 "$ssh_dir"
           printf '%s\n' "$PHP_MIRROR_DEPLOY_KEY" >"$ssh_dir/key"
           chmod 600 "$ssh_dir/key"
-          curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' >"$ssh_dir/known_hosts"
+          curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' >"$ssh_dir/known_hosts"
           export GIT_SSH_COMMAND="ssh -i ${ssh_dir}/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${ssh_dir}/known_hosts"
           if git ls-remote --exit-code --tags "$MIRROR" "refs/tags/v${VERSION}" >/dev/null; then
             echo "v${VERSION} is already in the mirror; it is never moved"
@@ -543,6 +561,70 @@ jobs:
       - name: Show the mirror commit that would be pushed
         if: needs.plan.outputs.publish != 'true'
         working-directory: dist/memless-php
+        run: |
+          echo "dry run: would force-push main and push tag v${VERSION} to ${MIRROR}"
+          git ls-tree -r -l HEAD
+
+  publish-go:
+    name: publish-go
+    needs: [plan, go-package]
+    if: needs.plan.outputs.publish != 'true' || vars.GO_MIRROR_PUBLISH == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      MIRROR: git@github.com:nascent-tech/memless-go.git
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-go-tree
+          path: dist/memless-go
+
+      - name: Commit the mirror tree as an orphan commit
+        working-directory: dist/memless-go
+        run: |
+          set -euo pipefail
+          git init -q
+          git checkout -q --orphan main
+          git add -A
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "memless ${VERSION}" -m "Built from nascent-tech/memless@${GITHUB_SHA}."
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "v${VERSION}" -m "memless ${VERSION}"
+          git log --stat -1
+
+      - name: Push the mirror
+        if: needs.plan.outputs.publish == 'true'
+        working-directory: dist/memless-go
+        env:
+          GO_MIRROR_DEPLOY_KEY: ${{ secrets.GO_MIRROR_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GO_MIRROR_DEPLOY_KEY}" ]; then
+            echo "GO_MIRROR_PUBLISH is true but the GO_MIRROR_DEPLOY_KEY secret is missing (docs/PUBLISHING.md)" >&2
+            exit 1
+          fi
+          ssh_dir="${RUNNER_TEMP}/mirror-ssh"
+          mkdir -p "$ssh_dir"
+          chmod 700 "$ssh_dir"
+          printf '%s\n' "$GO_MIRROR_DEPLOY_KEY" >"$ssh_dir/key"
+          chmod 600 "$ssh_dir/key"
+          curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' >"$ssh_dir/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i ${ssh_dir}/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${ssh_dir}/known_hosts"
+          if git ls-remote --exit-code --tags "$MIRROR" "refs/tags/v${VERSION}" >/dev/null; then
+            echo "v${VERSION} is already in the mirror; it is never moved"
+            exit 0
+          fi
+          git push --force "$MIRROR" main
+          git push "$MIRROR" "refs/tags/v${VERSION}"
+
+      - name: Show the mirror commit that would be pushed
+        if: needs.plan.outputs.publish != 'true'
+        working-directory: dist/memless-go
         run: |
           echo "dry run: would force-push main and push tag v${VERSION} to ${MIRROR}"
           git ls-tree -r -l HEAD

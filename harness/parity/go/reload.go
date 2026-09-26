@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	memless "github.com/nascent-tech/memless/bindings/go"
+	memless "github.com/nascent-tech/memless-go"
 )
 
 const (

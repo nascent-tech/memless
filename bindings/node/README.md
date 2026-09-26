@@ -4,8 +4,8 @@ A Node.js bridge to the memless C ABI through [koffi](https://koffi.dev), withou
 a native addon. It loads the same `libmemless_capi` cdylib as the Go and PHP
 bridges and speaks the same contract (ABI version 5), so the three stay in
 parity from a single shared surface. Node.js 18 or later. See the
-[project README](../../README.md) for what memless is, the guessing rules and
-the supported SQL subset.
+[project README](https://github.com/nascent-tech/memless#readme) for what
+memless is, the guessing rules and the supported SQL subset.
 
 ## Install
 

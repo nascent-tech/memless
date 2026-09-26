@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	modulePath   = "github.com/nascent-tech/memless/bindings/go"
+	modulePath   = "github.com/nascent-tech/memless-go"
 	develVersion = "devel"
 )
 

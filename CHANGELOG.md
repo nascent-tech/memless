@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+### Modifié
+
+- **Breaking change for Go users:** the Go module installs with `go get
+  github.com/nascent-tech/memless-go` and is imported as `github.com/nascent-tech/memless-go`: it is
+  published from the mirror repository `nascent-tech/memless-go`, so the main repository no longer
+  carries its libraries. The versions up to 0.2.1 stay at the former path,
+  `github.com/nascent-tech/memless/bindings/go`; to move, change the import path.
+
 ## [0.2.1] — 2026-09-26
 
 ### Corrigé

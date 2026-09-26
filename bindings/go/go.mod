@@ -1,4 +1,4 @@
-module github.com/nascent-tech/memless/bindings/go
+module github.com/nascent-tech/memless-go
 
 go 1.21
 
