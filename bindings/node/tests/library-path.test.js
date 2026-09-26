@@ -98,7 +98,23 @@ test('without ldd, the report tells musl from glibc', () => {
   assert.equal(detectLibc({ ldd: () => null, report: () => musl }), 'musl');
 });
 
+test('without ldd nor report, the dynamic loader tells musl from glibc', () => {
+  const only = (file) => (candidate) => candidate === file;
+  const probe = (exists) => ({ ldd: () => null, report: () => null, exists });
+  assert.equal(detectLibc(probe(only('/lib/ld-musl-x86_64.so.1'))), 'musl');
+  assert.equal(detectLibc(probe(only('/lib/ld-musl-aarch64.so.1'))), 'musl');
+  assert.equal(detectLibc(probe(only('/lib64/ld-linux-x86-64.so.2'))), 'glibc');
+  assert.equal(detectLibc(probe(only('/lib/ld-linux-aarch64.so.1'))), 'glibc');
+});
+
+test('the musl loader wins over a glibc loader, as with gcompat on Alpine', () => {
+  const both = (file) => file === '/lib/ld-musl-x86_64.so.1' || file === '/lib64/ld-linux-x86-64.so.2';
+  assert.equal(detectLibc({ ldd: () => null, report: () => null, exists: both }), 'musl');
+});
+
 test('an unknown libc is null, which leaves no bundled library', () => {
-  assert.equal(detectLibc({ ldd: () => 'something else', report: () => ({ header: {} }) }), null);
-  assert.equal(detectLibc({ ldd: () => null, report: () => null }), null);
+  const nothing = () => false;
+  assert.equal(detectLibc({ ldd: () => 'something else', report: () => ({ header: {} }), exists: nothing }), null);
+  assert.equal(detectLibc({ ldd: () => null, report: () => null, exists: nothing }), null);
+  assert.equal(platformFor('linux', 'x64', null), null);
 });

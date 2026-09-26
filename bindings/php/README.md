@@ -89,19 +89,20 @@ bridges:
 1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
    existing file;
 2. `lib/<platform>/libmemless_capi.<ext>` of this package, the platform coming
-   from `PHP_OS_FAMILY` and `php_uname('m')` (none on Linux with musl, whose
-   `/usr/bin/ldd` says so);
+   from `PHP_OS_FAMILY` and `php_uname('m')`. On Linux the bridge checks the
+   libc (`/usr/bin/ldd`, then the dynamic loader under `/lib`), because the
+   bundled libraries need glibc: musl, or a libc it cannot tell, has no
+   bundled library;
 3. inside a checked-out workspace, `target/release/`, then `target/debug/`
    (`.dylib` before `.so`).
 
-If `/usr/bin/ldd` is absent (a minimal musl image), the bridge assumes glibc
-and the load fails: set `MEMLESS_LIB`. The bundled Linux libraries need glibc
-2.39 or later (Ubuntu 24.04 or later); on an older glibc, set `MEMLESS_LIB` to
-a library built locally. When nothing is found, the error says to set
-`MEMLESS_LIB`. The library must speak ABI version 5. The C header (`memless.h`) is found the same way:
-`MEMLESS_HEADER`, then `lib/memless.h` of this package, then
-`crates/memless-capi/include/memless.h` of the workspace. On another
-platform, or with your own build, set `MEMLESS_LIB`:
+The bundled Linux libraries need glibc 2.39 or later (Ubuntu 24.04 or later);
+on an older glibc, set `MEMLESS_LIB` to a library built locally. When nothing
+is found, the error says to set `MEMLESS_LIB`. The library must speak ABI
+version 5. The C header (`memless.h`) is found the same way: `MEMLESS_HEADER`,
+then `lib/memless.h` of this package, then
+`crates/memless-capi/include/memless.h` of the workspace. On another platform,
+or with your own build, set `MEMLESS_LIB`:
 
 ```sh
 cargo build --release -p memless-capi

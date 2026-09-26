@@ -311,7 +311,9 @@ ABI version 5.
 
 ### Other platforms, or your own build
 
-On Linux with musl, which has no bundled library, on a glibc older than 2.39,
+On Linux with musl or with a libc the bridge cannot tell (no `/usr/bin/ldd`,
+no dynamic loader under `/lib` and, for Node, no diagnostic report) — neither
+has a bundled library —, on a glibc older than 2.39,
 or to use a library you built yourself, set `MEMLESS_LIB` to its path (Windows is not supported).
 Either:
 

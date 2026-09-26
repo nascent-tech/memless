@@ -19,4 +19,8 @@ function report() {
   }
 }
 
-module.exports = { ldd, report };
+function exists(file) {
+  return fs.existsSync(file);
+}
+
+module.exports = { ldd, report, exists };

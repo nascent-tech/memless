@@ -3,8 +3,8 @@ type: cadrage
 titre: Palier 6 — Publier sur les registres
 slug: palier-6-publier
 cree_le: 2026-09-26T12:11:30+0000
-mis_a_jour_le: 2026-09-26T16:15:00+0000
-branche: docs/npm-single-package
+mis_a_jour_le: 2026-09-26T16:36:45+0000
+branche: fix/unknown-libc
 statut: valide
 ---
 
@@ -96,7 +96,7 @@ le cœur, ils n'en décident rien. Le cœur, l'exécution SQL et la règle de co
 | # | État impossible | Type / message |
 |---|---|---|
 | R1 | `MEMLESS_LIB` posée mais désignant un fichier absent. | Erreur claire, citant `MEMLESS_LIB` — inchangé depuis les paliers précédents ; cette étape reste prioritaire sur toutes les autres. |
-| R2 | Plateforme sans bibliothèque embarquée (Linux musl, Windows), aucune de `target/release`/`target/debug` présente. | Erreur claire qui cite `MEMLESS_LIB` comme seule voie restante — aucun message neuf, le refus existant s'applique. |
+| R2 | Plateforme sans bibliothèque embarquée (Linux musl ou à libc indéterminable, Windows), aucune de `target/release`/`target/debug` présente. | Erreur claire qui cite `MEMLESS_LIB` comme seule voie restante — aucun message neuf, le refus existant s'applique. |
 | R3 | Go, cache utilisateur indisponible à l'extraction. | Retombe sur `target/release`/`target/debug`, puis le refus R2 s'applique. |
 | R4 | Go, fichier déjà présent dans le cache mais dont le SHA-256 complet diffère des octets embarqués. | Le fichier est réécrit avant tout `dlopen` — jamais chargé sans que son intégrité soit revérifiée. |
 | R5 | Paquet npm déjà publié à la version du tag (rejeu de la CI). | La publication passe (idempotence), aucune erreur. |
@@ -135,7 +135,7 @@ tout-ou-rien, jamais partielle.
 
 | Hors du palier 6 | Où |
 |---|---|
-| Linux musl, Windows | Aucune bibliothèque embarquée pour ces plateformes ; on retombe à `target/`, puis erreur claire citant `MEMLESS_LIB` — inchangé depuis le palier 5 |
+| Linux musl ou à libc indéterminable, Windows | Aucune bibliothèque embarquée pour ces plateformes ; on retombe à `target/`, puis erreur claire citant `MEMLESS_LIB` — inchangé depuis le palier 5 |
 | crates.io | Le cœur Rust n'est publié sur aucun registre de crates ; seuls les trois ponts (npm, Packagist, proxy Go) et GitHub Releases sont concernés |
 | PECL | Le pont PHP reste installé par Composer/Packagist, jamais par une extension PECL compilée |
 | Le nom de marque | N'est vérifié sur aucun registre par ce palier |
@@ -240,3 +240,17 @@ passées ; le terme ne désigne plus rien de publié à partir de 0.4.0.
 paquets `@nascent-tech/memless-<plateforme>` (`npm deprecate`, jamais `npm unpublish`), puis retirer
 leurs quatre éditeurs de confiance sur npmjs.com — seul reste celui de `@nascent-tech/memless`. Rien
 côté GitHub : `NPM_PUBLISH` et les permissions de `publish-npm` ne changent pas.
+
+## Révision du 2026-09-26 — libc indéterminable
+
+**Pourquoi.** Sur Linux, quand `/usr/bin/ldd` manque, Node renonçait à la bibliothèque embarquée
+tandis que PHP et Go supposaient glibc : un écart entre ponts, et, sur une image musl sans `ldd`, le
+chargement raté d'une bibliothèque glibc que R2 exclut.
+
+**Décision** (arbitrage Fable). Les trois ponts sondent la libc dans le même ordre :
+`/usr/bin/ldd`, puis — Node seul, puisque c'est la vérité du processus — le rapport de diagnostic,
+puis le chargeur dynamique sous `/lib` (`ld-musl-*` avant le chargeur glibc de l'architecture, parce
+que `gcompat` pose un chargeur glibc sur Alpine). Une libc que rien ne tranche est traitée comme non
+embarquée : repli `target/`, puis l'erreur de R2. Une image glibc sans `ldd`, comme distroless,
+garde sa bibliothèque embarquée grâce au chargeur. Correctif sans rupture, dans la section « Non
+publié » du CHANGELOG.

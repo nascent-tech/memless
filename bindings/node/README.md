@@ -80,7 +80,8 @@ bridges:
    existing file;
 2. the library this package bundles for the current platform, under
    `lib/<platform>/`. On Linux the bridge checks the libc, once
-   (`/usr/bin/ldd`, then `process.report`), because the bundled libraries
+   (`/usr/bin/ldd`, then `process.report`, then the dynamic loader under
+   `/lib`), because the bundled libraries
    need glibc: musl, or a libc it cannot tell, has no bundled library;
 3. inside a checked-out workspace, `target/release/`, then `target/debug/`
    (`.dylib` before `.so`).
