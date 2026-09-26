@@ -43,21 +43,28 @@ The jobs, in order:
    which it adds the four platform packages as `optionalDependencies` at
    exactly `X.Y.Z`. It installs them on Linux x86_64, runs a query, and
    uploads the five tarballs. It needs no account, so it always runs.
-5. `publish` creates the GitHub release, whose npm tarball is the one
-   `npm-packages` built (with its `optionalDependencies`). When the release
-   already exists, it says so and leaves it alone: assets are never replaced.
-6. `publish-go` commits the libraries into `bindings/go/lib/` on top of the
+5. `php-package` assembles the Composer package tree (`bindings/php` without
+   `vendor`, `tests/`, `phpunit.xml.dist`, `composer.lock` and
+   `lib/.gitignore`, plus `LICENSE`, `lib/<platform>/`, `lib/SHA256SUMS` and
+   `lib/memless.h`), installs it with Composer on Linux x86_64 and runs a
+   query, then uploads both the tree and `memless-php-X.Y.Z.zip` (root
+   `memless-php-X.Y.Z/`) as artifacts. It needs no account, so it always runs;
+   `publish` and `publish-php` both consume its output, so the package content
+   is defined once.
+6. `publish` creates the GitHub release, whose npm tarball is the one
+   `npm-packages` built (with its `optionalDependencies`) and whose PHP
+   archive is the zip `php-package` built. When the release already exists,
+   it says so and leaves it alone: assets are never replaced.
+7. `publish-go` commits the libraries into `bindings/go/lib/` on top of the
    tagged commit, runs `go test` against the bundled library, and pushes the
    tag `bindings/go/vX.Y.Z` with the workflow's `GITHUB_TOKEN`. That commit is
    on no branch: `main` never carries a binary.
-7. `publish-npm` installs npm 11 and publishes the tarballs of `npm-packages`,
+8. `publish-npm` installs npm 11 and publishes the tarballs of `npm-packages`,
    the platform packages first and the main package last.
-8. `publish-php` assembles the mirror tree (`bindings/php` without `vendor`,
-   `tests/`, `phpunit.xml.dist` and `composer.lock`, plus `LICENSE`,
-   `lib/<platform>/`, `lib/SHA256SUMS` and `lib/memless.h`), installs it with
-   Composer on Linux x86_64 and runs a query, then pushes it to the mirror as a
-   single orphan commit, forced onto the mirror's `main`, and tags it
-   `vX.Y.Z`. Packagist picks the tag up through its GitHub hook.
+9. `publish-php` takes the package tree `php-package` assembled and tested,
+   and pushes it to the mirror as a single orphan commit, forced onto the
+   mirror's `main`, and tags it `vX.Y.Z`. Packagist picks the tag up through
+   its GitHub hook.
 
 Each job only gets the permissions it needs: `publish` and `publish-go` can
 write the repository's contents, `publish-npm` can request an OIDC token for

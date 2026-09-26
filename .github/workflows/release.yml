@@ -157,9 +157,82 @@ jobs:
           path: dist/lib/
           if-no-files-found: error
 
+  php-package:
+    name: php-package
+    needs: [plan, libraries]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ffi
+          tools: composer
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-lib
+          path: dist/lib
+
+      - name: Assemble the Composer package tree
+        run: |
+          set -euo pipefail
+          package="dist/memless-php-${VERSION}"
+          mkdir -p "$package"
+          cp -R bindings/php/. "$package"/
+          rm -rf "$package"/vendor "$package"/tests "$package"/phpunit.xml.dist "$package"/composer.lock \
+            "$package"/.phpunit.cache "$package"/.phpunit.result.cache "$package"/lib/.gitignore
+          cp LICENSE "$package"/LICENSE
+          cp -R dist/lib/. "$package"/lib/
+          cp crates/memless-capi/include/memless.h "$package"/lib/memless.h
+          (cd "$package" && find . -type f | sort)
+
+      - name: Test the package on linux-x64-gnu, without target/ or MEMLESS_LIB
+        run: |
+          set -euo pipefail
+          package="${GITHUB_WORKSPACE}/dist/memless-php-${VERSION}"
+          project="${RUNNER_TEMP}/php-smoke"
+          mkdir -p "$project"
+          cd "$project"
+          jq -n --arg url "$package" --arg version "$VERSION" '{
+            require: {"nascent-tech/memless": $version},
+            repositories: [{type: "path", url: $url,
+              options: {symlink: false, versions: {"nascent-tech/memless": $version}}}]
+          }' >composer.json
+          composer install --no-interaction --no-progress
+          printf 'users:\n  - id: 01H7B2\n    name: Ada\n' >data.yaml
+          cat >smoke.php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+          $db = Memless\Instance::load('data.yaml');
+          echo json_encode($db->query('SELECT name FROM users')), PHP_EOL;
+          $db->release();
+          PHP
+          env -u MEMLESS_LIB -u MEMLESS_HEADER php smoke.php
+
+      - name: Zip the package
+        run: |
+          set -euo pipefail
+          (cd dist && zip -r "memless-php-${VERSION}.zip" "memless-php-${VERSION}")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-php-tree
+          path: dist/memless-php-${{ needs.plan.outputs.version }}/
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: memless-php-zip
+          path: dist/memless-php-${{ needs.plan.outputs.version }}.zip
+          if-no-files-found: error
+
   publish:
     name: publish
-    needs: [plan, build, libraries, npm-packages]
+    needs: [plan, build, libraries, npm-packages, php-package]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -181,6 +254,11 @@ jobs:
           name: memless-npm-packages
           path: dist/packs
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: memless-php-zip
+          path: dist/php-zip
+
       - name: Assemble the release archives
         env:
           VERSION: ${{ needs.plan.outputs.version }}
@@ -190,12 +268,7 @@ jobs:
           find dist/artifacts -mindepth 2 -maxdepth 2 -type f -name '*.tar.gz' -exec cp {} dist/release/ \;
           cp dist/lib/SHA256SUMS dist/release/memless-lib-SHA256SUMS
           cp "dist/packs/nascent-tech-memless-${VERSION}.tgz" dist/release/
-
-          php_staging="dist/staging/memless-php-${VERSION}"
-          mkdir -p "$php_staging"
-          cp -R bindings/php/. "$php_staging"/
-          rm -rf "$php_staging"/vendor "$php_staging"/.phpunit.cache "$php_staging"/.phpunit.result.cache
-          (cd dist/staging && zip -r "../release/memless-php-${VERSION}.zip" "memless-php-${VERSION}")
+          cp "dist/php-zip/memless-php-${VERSION}.zip" dist/release/
 
           (cd dist/release && sha256sum -- * >SHA256SUMS)
           ls -l dist/release
@@ -413,7 +486,7 @@ jobs:
 
   publish-php:
     name: publish-php
-    needs: [plan, libraries]
+    needs: [plan, php-package]
     if: needs.plan.outputs.publish != 'true' || vars.PHP_MIRROR_PUBLISH == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -422,54 +495,10 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
       MIRROR: git@github.com:nascent-tech/memless-php.git
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.3"
-          extensions: ffi
-          tools: composer
-
       - uses: actions/download-artifact@v4
         with:
-          name: memless-lib
-          path: dist/lib
-
-      - name: Assemble the mirror tree
-        run: |
-          set -euo pipefail
-          mirror=dist/memless-php
-          mkdir -p "$mirror"
-          cp -R bindings/php/. "$mirror"/
-          rm -rf "$mirror"/vendor "$mirror"/tests "$mirror"/phpunit.xml.dist "$mirror"/composer.lock \
-            "$mirror"/.phpunit.cache "$mirror"/.phpunit.result.cache "$mirror"/lib/.gitignore
-          cp LICENSE "$mirror"/LICENSE
-          cp -R dist/lib/. "$mirror"/lib/
-          cp crates/memless-capi/include/memless.h "$mirror"/lib/memless.h
-          (cd "$mirror" && find . -type f | sort)
-
-      - name: Test the mirror on linux-x64-gnu, without target/ or MEMLESS_LIB
-        run: |
-          set -euo pipefail
-          mirror="${GITHUB_WORKSPACE}/dist/memless-php"
-          project="${RUNNER_TEMP}/php-smoke"
-          mkdir -p "$project"
-          cd "$project"
-          jq -n --arg url "$mirror" --arg version "$VERSION" '{
-            require: {"nascent-tech/memless": $version},
-            repositories: [{type: "path", url: $url,
-              options: {symlink: false, versions: {"nascent-tech/memless": $version}}}]
-          }' >composer.json
-          composer install --no-interaction --no-progress
-          printf 'users:\n  - id: 01H7B2\n    name: Ada\n' >data.yaml
-          cat >smoke.php <<'PHP'
-          <?php
-          require 'vendor/autoload.php';
-          $db = Memless\Instance::load('data.yaml');
-          echo json_encode($db->query('SELECT name FROM users')), PHP_EOL;
-          $db->release();
-          PHP
-          env -u MEMLESS_LIB -u MEMLESS_HEADER php smoke.php
+          name: memless-php-tree
+          path: dist/memless-php
 
       - name: Commit the mirror tree as an orphan commit
         working-directory: dist/memless-php
