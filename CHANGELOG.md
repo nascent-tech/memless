@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same pages, so language models can read the documentation in one piece.
 - The documentation site's `robots.txt` declares its Content Signals: search, AI answers and AI
   training are all allowed.
+- Every documentation page is also served as Markdown to clients that ask for `text/markdown`;
+  browsers keep getting HTML.
 
 ## [0.4.1] — 2026-09-26
 

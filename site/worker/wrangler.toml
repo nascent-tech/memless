@@ -1,0 +1,7 @@
+name = "memless-markdown"
+main = "index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+routes = [
+  { pattern = "memless.nascent-tech.co/*", zone_name = "nascent-tech.co" },
+]
