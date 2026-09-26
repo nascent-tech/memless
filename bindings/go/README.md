@@ -1,12 +1,12 @@
-# memless — Go bridge
+# Memless for Go
 
-A Go bridge to the memless C ABI through [purego](https://github.com/ebitengine/purego)
-— no cgo, no build step besides the pure-Go module. It loads the same
-`libmemless_capi` cdylib as the PHP and Node bridges and speaks the same
-contract (ABI version 5), so the three stay in parity from a single shared
-surface. See the
-[project README](https://github.com/nascent-tech/memless#readme) for what
-memless is, the guessing rules and the supported SQL subset.
+Query and change a YAML file with SQL, from Go. Memless loads the file into
+memory, runs your SQL against it and writes every accepted change back to the
+file — no schema, no server. It is made for test fixtures and demos.
+
+This guide covers the Go API. The file format, the supported SQL and the
+behaviour shared by all languages are described in the
+[project README](https://github.com/nascent-tech/memless#readme).
 
 ## Install
 
@@ -14,26 +14,22 @@ memless is, the guessing rules and the supported SQL subset.
 go get github.com/nascent-tech/memless-go
 ```
 
-That is all: the module carries the native library, so there is nothing to
-download or configure. Go 1.21 or later, on macOS (`darwin-arm64`,
-`darwin-x64`) or Linux with glibc (`linux-x64-gnu`, `linux-arm64-gnu`);
-elsewhere, see [The cdylib](#the-cdylib).
+Requires Go 1.21 or later, and **no cgo**: the module calls the native engine
+through [purego](https://github.com/ebitengine/purego). It embeds the engine
+for macOS (Apple silicon, Intel) and Linux with glibc 2.39 or later (x86_64,
+aarch64); your program carries only the one for the platform you build for
+(about 5 MB).
 
-The module is published from `bindings/go` of
-[nascent-tech/memless](https://github.com/nascent-tech/memless) into the
-mirror repository `nascent-tech/memless-go`, which the release workflow fills
-at each version with these sources and the four libraries under
-`lib/<platform>/` and their `lib/SHA256SUMS`, as a single commit tagged
-`vX.Y.Z`. The main repository carries no binary. Your program embeds the
-library of the platform it is built for, and only that one (about 5 MB).
+## Quick start
 
-Versions up to 0.2.1 were published at
-`github.com/nascent-tech/memless/bindings/go` (tags `bindings/go/vX.Y.Z` of
-the main repository) and stay there; from 0.3.0 on, the module path is
-`github.com/nascent-tech/memless-go`. To move, replace the import path and
-run `go get github.com/nascent-tech/memless-go`.
-
-## Surface
+```yaml
+# data.yaml
+users:
+  - id: 1
+    name: Ada
+  - id: 2
+    name: Grace
+```
 
 ```go
 package main
@@ -48,112 +44,110 @@ import (
 func main() {
 	db, err := memless.Load("data.yaml")
 	if err != nil {
-		log.Fatal(err) // *memless.RefusalError or *memless.FaultError
+		log.Fatal(err)
 	}
 	defer db.Release()
 
-	rows, err := db.Query("SELECT name FROM users")
+	// data.yaml is rewritten before Execute returns.
+	if _, err := db.Execute("INSERT INTO users (id, name) VALUES (3, 'Linus')"); err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := db.Query("SELECT name FROM users ORDER BY name")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(rows.Columns, rows.Rows) // [name] [[Ada] [Grace]]
-
-	affected, err := db.Execute("UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(affected)
-
-	if err := db.Begin(); err != nil { // BEGIN
-		log.Fatal(err)
-	}
-	if _, err := db.Execute("DELETE FROM wallets WHERE id = 'w_123'"); err != nil {
-		log.Fatal(err)
-	}
-	if err := db.Commit(); err != nil { // COMMIT
-		log.Fatal(err)
-	}
-
-	if err := db.Reload(); err != nil { // re-reads data.yaml
-		log.Fatal(err)
-	}
+	fmt.Println(rows.Columns, rows.Rows) // [name] [[Ada] [Grace] [Linus]]
 }
 ```
 
-- `Instance.Query` returns `Rows{Columns []string, Rows [][]any}`; a cell is
-  `int64`, `float64`, `string`, `bool`, or `nil` for an absent value.
-- `Instance.Execute` returns the affected row count (`0` for `BEGIN` /
-  `COMMIT` / `ROLLBACK`, which are also run through it — `Begin`, `Commit` and
-  `Rollback` are thin wrappers over it).
-- Every method returns a `*RefusalError` (the domain's message, verbatim —
-  D13) or a `*FaultError` (a boundary or internal fault); tell them apart with
-  `errors.As`. A fault reads `memless fault (<status>): <message>`, the same
-  text as in the PHP and Node bridges, and carries the ABI status in
-  `FaultError.Status` (`2` for an invalid argument, such as a released
-  instance or a NUL byte in the SQL, `3` for an internal fault).
-- A library that cannot be found or speaks another ABI version is a plain
-  error, returned by the first call that needs the library.
-- `Instance.Release` releases the handle once; a second call, a zero-value
-  instance, or an unknown handle is ignored.
-- `Instance.Reload` re-reads the file from disk into a fresh in-memory state,
-  exactly as `Load` would build it. It returns a `*RefusalError` while a
-  transaction is open (`cannot reload while a transaction is open`) or when
-  the file would be refused by `Load`; the old state stays usable either way.
+## API
 
-## The cdylib
+| Call | Returns | What it does |
+| --- | --- | --- |
+| `memless.Load(path)` | `*Instance, error` | Reads the YAML file into memory. |
+| `db.Query(sql)` | `Rows, error` | Runs a `SELECT`. `Rows.Columns` holds the names, `Rows.Rows` the values (`[][]any`). |
+| `db.Execute(sql)` | `uint64, error` | Runs an `INSERT`, `UPDATE` or `DELETE` and returns the number of rows affected. Outside a transaction, the file is rewritten before it returns. |
+| `db.Begin()` / `db.Commit()` / `db.Rollback()` | `error` | Groups writes: nothing is written until `Commit`; `Rollback` discards them. |
+| `db.Reload()` | `error` | Rereads the file, after something else changed it. Refused while a transaction is open. |
+| `db.Release()` | — | Frees the instance. Calling it again does nothing. |
 
-The bridge loads the native library on the first call that needs it, never
-at import time, and looks for it in the same order as the PHP and Node
-bridges:
+## Values
 
-1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
-   existing file;
-2. the library embedded for this platform, extracted once into
-   `<user cache dir>/memless/<version>-<short sha256>/` (`~/Library/Caches` on
-   macOS, `$XDG_CACHE_HOME` or `~/.cache` on Linux). The directory is created
-   `0700`, the file is written to a temporary name then renamed, and before
-   every load its full SHA-256 is compared with the embedded bytes and the file
-   rewritten when they differ. On Linux the bridge checks the libc
-   (`/usr/bin/ldd`, then the dynamic loader under `/lib`), because the
-   bundled libraries need glibc: musl, or a libc it cannot tell, has none;
-3. inside a checked-out workspace, `target/release/`, then `target/debug/`
-   (`.dylib` before `.so`).
+| In the file | In Go (`any`) |
+| --- | --- |
+| text | `string` |
+| integer | `int64` |
+| decimal | `float64` |
+| boolean | `bool` |
+| missing value | `nil` |
 
-When the cache directory cannot be used, the bridge moves on to step 3. If the
-user cache directory is mounted `noexec`, the extracted library cannot be
-loaded: set `MEMLESS_LIB`. The bundled Linux libraries need glibc 2.39 or
-later (Ubuntu 24.04 or later); on an older glibc, set `MEMLESS_LIB` to a
-library built locally. When nothing is found, the error says to set
-`MEMLESS_LIB`. The library must speak ABI version 5. On another platform, or
-with your own build, set `MEMLESS_LIB`:
+## Errors
+
+Every call returns one of two error types. Their messages are identical in the
+Node.js and PHP versions of Memless.
+
+- **`*memless.RefusalError`** — the file or the SQL breaks a rule: unknown
+  table or column, broken relation, unsupported SQL, transaction already open.
+  It is an expected outcome, which you can check for in a test.
+- **`*memless.FaultError`** — the bridge was misused (for example, a call after
+  `Release`) or an internal error happened. Its `Status` field is `2` for an
+  invalid argument and `3` for an internal error.
+
+```go
+_, err := db.Query("SELECT nope FROM users")
+
+var refusal *memless.RefusalError
+if errors.As(err, &refusal) {
+	fmt.Println(refusal) // no column "nope" in table "users"
+}
+```
+
+If the native library cannot be found or has an incompatible version, the
+first call returns a plain error that explains what to do.
+
+## Troubleshooting
+
+**Your platform is not covered** (Alpine and other musl-based Linux, glibc
+older than 2.39). Build the engine and set `MEMLESS_LIB`:
 
 ```sh
+git clone https://github.com/nascent-tech/memless.git && cd memless
 cargo build --release -p memless-capi
 export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
-`MEMLESS_LIB` loads arbitrary native code, like any FFI library path — only
-point it at a library you trust.
+**Where the embedded engine goes.** On first use, the engine is written once
+to your user cache directory (`~/Library/Caches/memless/` on macOS,
+`$XDG_CACHE_HOME/memless/` or `~/.cache/memless/` on Linux) and its SHA-256 is
+checked before every load. If that directory cannot be used, or is mounted
+`noexec`, set `MEMLESS_LIB`.
 
-## Running the tests
+The bridge looks for the engine in this order: `MEMLESS_LIB`, then the
+embedded engine for your platform, then, inside a clone of the repository,
+`target/release/` and `target/debug/`. On Linux it checks the libc first
+(`/usr/bin/ldd`, then the dynamic loader under `/lib`): musl, or a libc it
+cannot identify, gets no embedded engine. `MEMLESS_LIB` loads native code into
+your process; only point it at a library you trust.
 
-The tests live in `bindings/go` of the main repository,
-[nascent-tech/memless](https://github.com/nascent-tech/memless); the mirror
-does not carry them:
-
-```sh
-cargo build -p memless-capi
-cd bindings/go && go test ./...
-```
+**Upgrading from 0.2.x.** The module used to be
+`github.com/nascent-tech/memless/bindings/go`. Replace that import path with
+`github.com/nascent-tech/memless-go`; the package name, `memless`, is the same.
 
 ## Contributing
 
-This bridge is developed in [`bindings/go`](https://github.com/nascent-tech/memless/tree/main/bindings/go)
-of [nascent-tech/memless](https://github.com/nascent-tech/memless), next to
-the Rust core, the two other bridges and the parity harness that keeps the
-three in agreement. The repository `nascent-tech/memless-go` is a mirror
-that the release workflow rewrites at each version: open issues and pull
-requests on [nascent-tech/memless](https://github.com/nascent-tech/memless/issues/new/choose),
-and read its [contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
-first. Security issues go to its
-[security policy](https://github.com/nascent-tech/memless/security/policy).
+This module is developed in
+[`bindings/go`](https://github.com/nascent-tech/memless/tree/main/bindings/go)
+of [nascent-tech/memless](https://github.com/nascent-tech/memless), with the
+engine and the Node.js and PHP versions. Open issues and pull requests there —
+the repository `nascent-tech/memless-go`, which the Go module proxy reads, is a
+read-only copy published with each release. See the
+[contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
+and the [security policy](https://github.com/nascent-tech/memless/security/policy).
+
+To work on the bridge in a clone of the repository:
+
+```sh
+cargo build --release -p memless-capi   # the bridge loads target/release/ in a clone
+cd bindings/go && go test ./...
+```

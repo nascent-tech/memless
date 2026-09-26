@@ -1,16 +1,12 @@
-# memless — PHP bridge
+# Memless for PHP
 
-A PHP bridge to the memless C ABI through [FFI](https://www.php.net/manual/en/book.ffi.php)
-— no extension to compile, only `ext-ffi` enabled. It loads the same
-`libmemless_capi` cdylib as the Go and Node bridges and speaks the same
-contract (ABI version 5), so the three stay in parity from a single shared
-surface. See the
-[project README](https://github.com/nascent-tech/memless#readme) for what
-memless is, the guessing rules and the supported SQL subset.
+Query and change a YAML file with SQL, from PHP. Memless loads the file into
+memory, runs your SQL against it and writes every accepted change back to the
+file — no schema, no server. It is made for test fixtures and demos.
 
-## Requirements
-
-- PHP 8.1 or later, with the `ffi` extension enabled.
+This guide covers the PHP API. The file format, the supported SQL and the
+behaviour shared by all languages are described in the
+[project README](https://github.com/nascent-tech/memless#readme).
 
 ## Install
 
@@ -18,20 +14,32 @@ memless is, the guessing rules and the supported SQL subset.
 composer require nascent-tech/memless
 ```
 
-That is all: the package carries the native library under `lib/<platform>/`
-for macOS (`darwin-arm64`, `darwin-x64`) and Linux with glibc
-(`linux-x64-gnu`, `linux-arm64-gnu`), their `lib/SHA256SUMS`, and the C
-header in `lib/memless.h`, so there is nothing to download or configure.
-Elsewhere, see [The cdylib](#the-cdylib).
+Requires PHP 8.1 or later with the `ffi` extension enabled; nothing to
+compile. The package ships the native engine for macOS (Apple silicon, Intel)
+and Linux with glibc 2.39 or later (x86_64, aarch64).
 
-Packagist needs `composer.json` at the root of a repository, so the package
-is published from the mirror repository `nascent-tech/memless-php`, which the
-release workflow fills with this directory and the libraries at each version.
-Versions before 0.2.0 were not on Packagist: the package was called
-`memless/php` and shipped only as `memless-php-<version>.zip` on the GitHub
-release, without the library.
+Check that FFI is available:
 
-## Surface
+```sh
+php -r 'var_dump(extension_loaded("ffi"));'   # bool(true)
+```
+
+If it prints `bool(false)`, enable it in `php.ini` (`extension=ffi`), or
+install your distribution's package (for example `php8.3-ffi`). From the
+command line — PHPUnit, scripts — nothing else is needed. Under a web server
+(PHP-FPM, Apache), PHP only allows FFI in preloaded code by default: set
+`ffi.enable=true` there.
+
+## Quick start
+
+```yaml
+# data.yaml
+users:
+  - id: 1
+    name: Ada
+  - id: 2
+    name: Grace
+```
 
 ```php
 <?php
@@ -39,94 +47,99 @@ release, without the library.
 require 'vendor/autoload.php';
 
 use Memless\Instance;
-use Memless\MemlessFault;
-use Memless\MemlessRefusal;
 
-$db = Instance::load('data.yaml'); // throws MemlessRefusal or MemlessFault
+$db = Instance::load('data.yaml');
 
-$rows = $db->query('SELECT name FROM users');
-// -> [['name' => 'Ada'], ['name' => 'Grace']]
+$db->execute("INSERT INTO users (id, name) VALUES (3, 'Linus')"); // data.yaml is rewritten
 
-$affected = $db->execute("UPDATE users SET name = 'Zoe' WHERE id = '01H7B2'");
-
-$db->begin();                                   // BEGIN / COMMIT / ROLLBACK
-$db->execute("DELETE FROM wallets WHERE id = 'w_123'");
-$db->commit();
-
-$db->reload();                                  // re-reads data.yaml
+print_r($db->query('SELECT name FROM users ORDER BY name'));
+// [['name' => 'Ada'], ['name' => 'Grace'], ['name' => 'Linus']]
 
 $db->release();
 ```
 
-- `Instance::query()` returns an array of rows, each row an associative array
-  keyed by (possibly qualified, e.g. `users.id`) column name; a cell is a PHP
-  `string`, `int`, `float`, `bool`, or `null` for an absent value.
-- `Instance::execute()` returns the affected row count (`0` for a transaction
-  verb — `begin()`, `commit()` and `rollback()` are thin wrappers over it).
-- `MemlessRefusal` (extends `\RuntimeException`) carries the domain message
-  verbatim (D13); a boundary or internal fault instead throws `MemlessFault`
-  (also a `\RuntimeException`), whose message reads
-  `memless fault (<status>): <message>` — the same text as in the Go and Node
-  bridges — and whose `status` property carries the ABI status (`2` for an
-  invalid argument, such as a released instance or a NUL byte in the path or
-  SQL, `3` for an internal fault).
-- A library or header that cannot be found, or a library that speaks another
-  ABI version, throws a `\LogicException` on the first call that needs it.
-- `Instance::release()` is idempotent, and is also called automatically from
-  the destructor if you never call it yourself.
-- `Instance::reload()` re-reads the file from disk into a fresh in-memory
-  state, exactly as `Instance::load()` would build it. It throws a
-  `MemlessRefusal` while a transaction is open
-  (`cannot reload while a transaction is open`) or when the file would be
-  refused at load; the old state stays usable either way.
+## API
 
-## The cdylib
+| Call | Returns | What it does |
+| --- | --- | --- |
+| `Instance::load($path)` | `Instance` | Reads the YAML file into memory. |
+| `$db->query($sql)` | `array` | Runs a `SELECT`. Each row is an array keyed by column name (`users.name` in a query with a `JOIN`). |
+| `$db->execute($sql)` | `int` | Runs an `INSERT`, `UPDATE` or `DELETE` and returns the number of rows affected. Outside a transaction, the file is rewritten before it returns. |
+| `$db->begin()` / `$db->commit()` / `$db->rollback()` | `void` | Groups writes: nothing is written until `commit()`; `rollback()` discards them. |
+| `$db->reload()` | `void` | Rereads the file, after something else changed it. Refused while a transaction is open. |
+| `$db->release()` | `void` | Frees the instance. Calling it again does nothing, and the destructor calls it for you. |
 
-The bridge loads the native library on the first call that needs it, never
-at include time, and looks for it in the same order as the Go and Node
-bridges:
+## Values
 
-1. `MEMLESS_LIB`, a trusted (ideally absolute) path that must name an
-   existing file;
-2. `lib/<platform>/libmemless_capi.<ext>` of this package, the platform coming
-   from `PHP_OS_FAMILY` and `php_uname('m')`. On Linux the bridge checks the
-   libc (`/usr/bin/ldd`, then the dynamic loader under `/lib`), because the
-   bundled libraries need glibc: musl, or a libc it cannot tell, has no
-   bundled library;
-3. inside a checked-out workspace, `target/release/`, then `target/debug/`
-   (`.dylib` before `.so`).
+| In the file | In PHP |
+| --- | --- |
+| text | `string` |
+| integer | `int` |
+| decimal | `float` |
+| boolean | `bool` |
+| missing value | `null` |
 
-The bundled Linux libraries need glibc 2.39 or later (Ubuntu 24.04 or later);
-on an older glibc, set `MEMLESS_LIB` to a library built locally. When nothing
-is found, the error says to set `MEMLESS_LIB`. The library must speak ABI
-version 5. The C header (`memless.h`) is found the same way: `MEMLESS_HEADER`,
-then `lib/memless.h` of this package, then
-`crates/memless-capi/include/memless.h` of the workspace. On another platform,
-or with your own build, set `MEMLESS_LIB`:
+## Errors
+
+Every method throws one of two exceptions, both `\RuntimeException`. Their
+messages are identical in the Node.js and Go versions of Memless.
+
+- **`Memless\MemlessRefusal`** — the file or the SQL breaks a rule: unknown
+  table or column, broken relation, unsupported SQL, transaction already open.
+  It is an expected outcome, which you can assert on in a test.
+- **`Memless\MemlessFault`** — the bridge was misused (for example, a call
+  after `release()`) or an internal error happened. Its `status` property is
+  `2` for an invalid argument and `3` for an internal error.
+
+```php
+use Memless\MemlessRefusal;
+
+$this->expectException(MemlessRefusal::class);
+$this->expectExceptionMessage('no column "nope" in table "users"');
+$db->query('SELECT nope FROM users');
+```
+
+If the native library or its C header cannot be found, or the library has an
+incompatible version, the first call throws a `\LogicException` that explains
+what to do.
+
+## Troubleshooting
+
+**`nascent-tech/memless requires ext-ffi`** from Composer, or **`Class "FFI"
+not found`** when the code runs — the `ffi` extension is not enabled; see
+[Install](#install).
+
+**Your platform is not covered** (Alpine and other musl-based Linux, glibc
+older than 2.39). Build the engine and set `MEMLESS_LIB`:
 
 ```sh
+git clone https://github.com/nascent-tech/memless.git && cd memless
 cargo build --release -p memless-capi
 export MEMLESS_LIB="$PWD/target/release/libmemless_capi.so"   # .dylib on macOS
 ```
 
-`MEMLESS_LIB` loads arbitrary native code, like any FFI library path — only
-point it at a library you trust.
-
-## Running the tests
-
-```sh
-composer install
-vendor/bin/phpunit
-```
+The bridge looks for the engine in this order: `MEMLESS_LIB`, then the library
+bundled for your platform under `lib/<platform>/`, then, inside a clone of the
+repository, `target/release/` and `target/debug/`. On Linux it checks the libc
+first (`/usr/bin/ldd`, then the dynamic loader under `/lib`): musl, or a libc
+it cannot identify, gets no bundled library. The C header is found the same
+way, with `MEMLESS_HEADER`, then `lib/memless.h`. `MEMLESS_LIB` loads native
+code into your process; only point it at a library you trust.
 
 ## Contributing
 
-This bridge is developed in [`bindings/php`](https://github.com/nascent-tech/memless/tree/main/bindings/php)
-of [nascent-tech/memless](https://github.com/nascent-tech/memless), next to
-the Rust core, the two other bridges and the parity harness that keeps the
-three in agreement. The repository `nascent-tech/memless-php` is a mirror
-that the release workflow rewrites at each version: open issues and pull
-requests on [nascent-tech/memless](https://github.com/nascent-tech/memless/issues/new/choose),
-and read its [contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
-first. Security issues go to its
-[security policy](https://github.com/nascent-tech/memless/security/policy).
+This package is developed in
+[`bindings/php`](https://github.com/nascent-tech/memless/tree/main/bindings/php)
+of [nascent-tech/memless](https://github.com/nascent-tech/memless), with the
+engine and the Node.js and Go versions. Open issues and pull requests there —
+the repository `nascent-tech/memless-php`, which Packagist reads, is a
+read-only copy published with each release. See the
+[contributing guide](https://github.com/nascent-tech/memless/blob/main/CONTRIBUTING.md)
+and the [security policy](https://github.com/nascent-tech/memless/security/policy).
+
+To work on the bridge in a clone of the repository:
+
+```sh
+cargo build --release -p memless-capi   # the bridge loads target/release/ in a clone
+cd bindings/php && composer install && vendor/bin/phpunit
+```
