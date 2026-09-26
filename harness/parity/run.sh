@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Replays every fixture through the PHP bridge and the Go bridge and requires
-# the same issue and message from both. Exits 0 when all agree, non-zero with
-# the list of divergences or driver failures otherwise.
+# Replays every fixture through the PHP bridge, the Go bridge and the Node
+# bridge and requires the same issue and message from all three. Exits 0 when
+# all agree, non-zero with the list of divergences or driver failures otherwise.
+# The queries, writes and transactions parts are sourced from sibling scripts
+# so this launcher stays short; they share diverged, here, and the drivers.
 set -uo pipefail
 shopt -s nullglob
 
@@ -44,6 +46,20 @@ else
 	go_driver=("$here/go/driver")
 fi
 
+if [ -n "${MEMLESS_NODE_DRIVER:-}" ]; then
+	node_driver=("$MEMLESS_NODE_DRIVER")
+else
+	if [ ! -d "$root/bindings/node/node_modules/koffi" ]; then
+		echo "node bridge not installed; run: npm ci --prefix $root/bindings/node" >&2
+		exit 2
+	fi
+	if [ ! -d "$here/node/node_modules/@nascent-tech/memless" ]; then
+		echo "node driver not installed; run: npm install --prefix $here/node" >&2
+		exit 2
+	fi
+	node_driver=(node "$here/node/main.js")
+fi
+
 fixtures=("$here"/fixtures/*.yaml)
 if [ "${#fixtures[@]}" -eq 0 ]; then
 	echo "no fixtures found under $here/fixtures" >&2
@@ -65,27 +81,6 @@ is_outcome() {
 	esac
 }
 
-is_query_outcome() {
-	case "$1" in
-	ok* | "refused: "* | "fault: "*) return 0 ;;
-	*) return 1 ;;
-	esac
-}
-
-is_write_outcome() {
-	case "$1" in
-	"accepted:"* | "refused:"* | "fault:"*) return 0 ;;
-	*) return 1 ;;
-	esac
-}
-
-is_disk_refusal() {
-	case "$1" in
-	"refused:cannot write file "*) return 0 ;;
-	*) return 1 ;;
-	esac
-}
-
 diverged=0
 for fixture in "${fixtures[@]}"; do
 	name=$(basename "$fixture")
@@ -93,14 +88,19 @@ for fixture in "${fixtures[@]}"; do
 	php_status=$?
 	go_out=$("${go_driver[@]}" "$fixture" 2>/dev/null)
 	go_status=$?
+	node_out=$("${node_driver[@]}" "$fixture" 2>/dev/null)
+	node_status=$?
 	if [ "$php_status" -ne 0 ] || ! is_outcome "$php_out"; then
 		echo "DRIVER FAILURE $name (php): status=$php_status out=[$php_out]"
 		diverged=1
 	elif [ "$go_status" -ne 0 ] || ! is_outcome "$go_out"; then
 		echo "DRIVER FAILURE $name (go): status=$go_status out=[$go_out]"
 		diverged=1
-	elif [ "$php_out" != "$go_out" ]; then
-		echo "DIVERGENCE $name: php=[$php_out] go=[$go_out]"
+	elif [ "$node_status" -ne 0 ] || ! is_outcome "$node_out"; then
+		echo "DRIVER FAILURE $name (node): status=$node_status out=[$node_out]"
+		diverged=1
+	elif [ "$php_out" != "$go_out" ] || [ "$php_out" != "$node_out" ]; then
+		echo "DIVERGENCE $name: php=[$php_out] go=[$go_out] node=[$node_out]"
 		diverged=1
 	fi
 done
@@ -111,81 +111,11 @@ if ! cmp -s "$residue" "$residue_before"; then
 fi
 rm -f "$residue_before"
 
-queries="$here/queries.txt"
-if [ -f "$queries" ]; then
-	while IFS=$'\t' read -r fixture sql; do
-		case "$fixture" in '' | \#*) continue ;; esac
-		path="$here/fixtures/$fixture"
-		if [ ! -f "$path" ]; then
-			echo "QUERY SETUP ERROR: queries.txt names a missing fixture: $fixture"
-			exit 2
-		fi
-		php_out=$("${php_driver[@]}" "$path" "$sql" 2>/dev/null)
-		php_status=$?
-		go_out=$("${go_driver[@]}" "$path" "$sql" 2>/dev/null)
-		go_status=$?
-		if [ "$php_status" -ne 0 ] || ! is_query_outcome "$php_out"; then
-			echo "QUERY DRIVER FAILURE [$fixture | $sql] (php): status=$php_status out=[$php_out]"
-			diverged=1
-		elif [ "$go_status" -ne 0 ] || ! is_query_outcome "$go_out"; then
-			echo "QUERY DRIVER FAILURE [$fixture | $sql] (go): status=$go_status out=[$go_out]"
-			diverged=1
-		elif [ "$php_out" != "$go_out" ]; then
-			echo "QUERY DIVERGENCE [$fixture | $sql]"
-			echo "  php=[$php_out]"
-			echo "  go =[$go_out]"
-			diverged=1
-		fi
-	done <"$queries"
-fi
-
-writes="$here/writes.txt"
-if [ -f "$writes" ]; then
-	while IFS=$'\t' read -r first second third; do
-		case "$first" in '' | \#*) continue ;; esac
-		if [ "$first" = "!disk" ]; then
-			fixture="$second"
-			sql="$third"
-			mode="write-disk"
-			if [ "$(id -u)" = "0" ]; then
-				echo "note: skipping !disk under root (0555 does not block root): $sql"
-				continue
-			fi
-		else
-			fixture="$first"
-			sql="$second"
-			mode="write"
-		fi
-		path="$here/fixtures/$fixture"
-		if [ ! -f "$path" ]; then
-			echo "WRITE SETUP ERROR: writes.txt names a missing fixture: $fixture"
-			exit 2
-		fi
-		php_out=$("${php_driver[@]}" "$path" "$sql" "$mode" 2>/dev/null)
-		php_status=$?
-		go_out=$("${go_driver[@]}" "$path" "$sql" "$mode" 2>/dev/null)
-		go_status=$?
-		if [ "$php_status" -ne 0 ] || ! is_write_outcome "$php_out"; then
-			echo "WRITE DRIVER FAILURE [$fixture | $sql] (php): status=$php_status out=[$php_out]"
-			diverged=1
-		elif [ "$go_status" -ne 0 ] || ! is_write_outcome "$go_out"; then
-			echo "WRITE DRIVER FAILURE [$fixture | $sql] (go): status=$go_status out=[$go_out]"
-			diverged=1
-		elif [ "$mode" = "write-disk" ] && ! is_disk_refusal "$php_out"; then
-			echo "WRITE DISK NOT REFUSED [$fixture | $sql]: [$php_out]"
-			diverged=1
-		elif [ "$php_out" != "$go_out" ]; then
-			echo "WRITE DIVERGENCE [$fixture | $sql]"
-			echo "  php=[$php_out]"
-			echo "  go =[$go_out]"
-			diverged=1
-		fi
-	done <"$writes"
-fi
-
+. "$here/queries.sh"
+. "$here/writes.sh"
 . "$here/transactions.sh"
 
 if [ "$diverged" -eq 0 ]; then
-	echo "parity: all fixtures, queries, writes and transactions agree on both bridges"
+	echo "parity: all fixtures, queries, writes and transactions agree on all three bridges"
 fi
 exit "$diverged"

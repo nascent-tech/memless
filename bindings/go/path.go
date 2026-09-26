@@ -9,9 +9,16 @@ import (
 
 func libraryPath() (string, error) {
 	if env := os.Getenv("MEMLESS_LIB"); env != "" {
-		return env, nil
+		return envLibrary(env)
 	}
 	return searchLibrary()
+}
+
+func envLibrary(env string) (string, error) {
+	if !exists(env) {
+		return "", errors.New("memless cdylib not found at " + env + "; set MEMLESS_LIB")
+	}
+	return env, nil
 }
 
 func searchLibrary() (string, error) {
@@ -45,12 +52,14 @@ func exists(path string) bool {
 	return err == nil
 }
 
+// Same order as the PHP and Node bridges: release before debug, .dylib
+// before .so.
 func libraryNames() []string {
 	return []string{
-		"target/debug/libmemless_capi.dylib",
 		"target/release/libmemless_capi.dylib",
-		"target/debug/libmemless_capi.so",
+		"target/debug/libmemless_capi.dylib",
 		"target/release/libmemless_capi.so",
+		"target/debug/libmemless_capi.so",
 	}
 }
 

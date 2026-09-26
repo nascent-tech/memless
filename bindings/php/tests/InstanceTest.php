@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Memless\Tests;
 
 use Memless\Instance;
+use Memless\MemlessFault;
 use Memless\MemlessRefusal;
 use PHPUnit\Framework\TestCase;
 
@@ -35,16 +36,24 @@ final class InstanceTest extends TestCase
         Instance::load($this->fixture('does-not-exist.yaml'));
     }
 
-    public function testThrowsLogicExceptionOnABoundaryFault(): void
+    public function testThrowsAFaultOnABoundaryFault(): void
     {
-        $this->expectException(\LogicException::class);
-        Instance::load("\xFFnot-utf-8");
+        try {
+            Instance::load("\xFFnot-utf-8");
+            $this->fail('expected a MemlessFault');
+        } catch (MemlessFault $fault) {
+            $this->assertSame(2, $fault->status);
+        }
     }
 
-    public function testThrowsLogicExceptionOnANulBytePath(): void
+    public function testThrowsAFaultOnANulBytePath(): void
     {
-        $this->expectException(\LogicException::class);
-        Instance::load("has\0nul");
+        try {
+            Instance::load("has\0nul");
+            $this->fail('expected a MemlessFault');
+        } catch (MemlessFault $fault) {
+            $this->assertSame(2, $fault->status);
+        }
     }
 
     public function testQueriesRowsInFileOrder(): void
@@ -122,6 +131,18 @@ final class InstanceTest extends TestCase
         $instance->release();
         $instance->release();
         $this->expectNotToPerformAssertions();
+    }
+
+    public function testQueryAfterReleaseFaults(): void
+    {
+        $instance = Instance::load($this->fixture('start.yaml'));
+        $instance->release();
+        try {
+            $instance->query('SELECT * FROM users');
+            $this->fail('expected a MemlessFault');
+        } catch (MemlessFault $fault) {
+            $this->assertSame(2, $fault->status);
+        }
     }
 
     public function testDestructReleasesWithoutError(): void

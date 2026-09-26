@@ -19,3 +19,7 @@ vendor/
 # Parity harness Go driver binary
 harness/parity/go/driver
 harness/parity/tests/.fake-accept-driver
+harness/parity/tests/.fake-accept-node-driver
+
+# Node.js bridge and parity driver dependencies
+node_modules/

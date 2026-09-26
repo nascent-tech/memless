@@ -14,10 +14,12 @@ final class Loader
 
     private const STATUS_REFUSED = 1;
 
+    private const STATUS_INVALID_ARGUMENT = 2;
+
     public static function open(string $path): int
     {
         if (strpos($path, "\0") !== false) {
-            throw new \InvalidArgumentException('path contains a NUL byte');
+            throw new MemlessFault(self::STATUS_INVALID_ARGUMENT, 'path contains a NUL byte');
         }
 
         [$status, $handle, $message] = Call::load(Library::ffi(), $path);
@@ -35,6 +37,6 @@ final class Loader
             throw new MemlessRefusal($message);
         }
 
-        throw new \LogicException("memless load fault ({$status}): {$message}");
+        throw new MemlessFault($status, $message);
     }
 }

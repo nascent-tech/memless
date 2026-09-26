@@ -10,5 +10,5 @@ type FaultError struct {
 }
 
 func (e *FaultError) Error() string {
-	return fmt.Sprintf("memless load fault (%d): %s", e.Status, e.Message)
+	return fmt.Sprintf("memless fault (%d): %s", e.Status, e.Message)
 }

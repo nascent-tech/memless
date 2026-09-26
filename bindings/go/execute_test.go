@@ -80,6 +80,9 @@ func TestExecuteAfterReleaseFaults(t *testing.T) {
 	if !errors.As(err, &fault) {
 		t.Fatalf("expected a FaultError, got %T", err)
 	}
+	if fault.Status != statusInvalidArgument {
+		t.Fatalf("status: got %d", fault.Status)
+	}
 }
 
 func TestExecuteRejectsANulByteInSql(t *testing.T) {
