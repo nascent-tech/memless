@@ -281,7 +281,8 @@ a distribution of the same age); on an older glibc, build the library locally
 and set `MEMLESS_LIB` (see below). How each package carries it:
 
 - **npm** — `@nascent-tech/memless` ships `lib/<platform>/` for the four
-  platforms and loads the one that matches your machine. See
+  platforms and loads the one that matches your machine; each version is also
+  shown in the mirror repository `nascent-tech/memless-node`. See
   [`bindings/node/README.md`](bindings/node/README.md).
 - **Composer** — the package ships `lib/<platform>/` for the four platforms,
   and the C header the FFI extension needs. See
