@@ -1,0 +1,73 @@
+name: Bug report
+description: Something memless does wrong, or differently in two bridges.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this. For a security issue, do not use this form: see [SECURITY.md](https://github.com/nascent-tech/memless/security/policy).
+  - type: dropdown
+    id: bridge
+    attributes:
+      label: Bridge
+      description: Where you saw it. Tick more than one if you tried several.
+      multiple: true
+      options:
+        - PHP
+        - Go
+        - Node.js
+        - C ABI (direct use of libmemless_capi)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: memless version
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS, Apple silicon
+        - macOS, Intel
+        - Linux x86_64, glibc
+        - Linux aarch64, glibc
+        - Other (say which below)
+    validations:
+      required: true
+  - type: textarea
+    id: file
+    attributes:
+      label: YAML file
+      description: The smallest file, or excerpt, that shows the problem.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: sql
+    attributes:
+      label: SQL statement(s)
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The result, or the exact error message, copied as is.
+    validations:
+      required: true
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else
+      description: Other bridges tried and what they did, MEMLESS_LIB set or not, how you installed the package.

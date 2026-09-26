@@ -1,0 +1,11 @@
+name: Question
+description: Something the documentation does not answer.
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What you want to do, which bridge, and what you already read or tried.
+    validations:
+      required: true

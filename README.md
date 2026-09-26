@@ -391,6 +391,29 @@ are not supported. How a release reaches npm, Packagist and the Go module
 proxy is described for maintainers in
 [`docs/PUBLISHING.md`](docs/PUBLISHING.md).
 
+## Contributing
+
+Contributions are welcome: bug reports, fixes, documentation, and ideas
+discussed in an issue first. Everything happens in this repository — the
+core, the three bridges and the parity harness live together here, so that a
+change reaches PHP, Go and Node.js at once. The repositories
+`nascent-tech/memless-php`, `nascent-tech/memless-go` and
+`nascent-tech/memless-node` are mirrors that the release workflow rewrites at
+each version; please do not open issues or pull requests there.
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how the project is organised, setting
+  up, the checks a pull request must pass, and how commits are written.
+- [Open an issue](https://github.com/nascent-tech/memless/issues/new/choose) —
+  a bug report, a feature request or a question.
+- [`SECURITY.md`](SECURITY.md) — report a vulnerability privately, never in a
+  public issue.
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — how we treat each other.
+
+Issues labelled
+[`good first issue`](https://github.com/nascent-tech/memless/labels/good%20first%20issue)
+are a good place to start.
+
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE). By contributing, you agree that your
+contribution is released under the same license.
