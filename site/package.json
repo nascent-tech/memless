@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/markdown-pages.mjs",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "node --test worker/"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.4",
@@ -19,5 +20,14 @@
   "allowScripts": {
     "esbuild@0.28.2": true,
     "fsevents@2.3.3": true
+  },
+  "devDependencies": {
+    "hast-util-select": "^6.0.4",
+    "rehype-parse": "^9.0.1",
+    "rehype-remark": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-stringify": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-remove": "^4.0.0"
   }
 }

@@ -36,3 +36,24 @@ needed. Colours: ink `#16181D`, paper `#F3F1EA`, green `#2E8B62`.
 
 The favicons, `og.png` (the card shown when a link is shared),
 `site.webmanifest` and `robots.txt` sit at the root of `public/`.
+
+## Markdown for agents
+
+`npm run build` writes an `index.md` next to every `index.html`, converted from
+the same page. The Cloudflare Worker in `worker/` answers a request that prefers
+`text/markdown` in its `Accept` header with that file, as
+`Content-Type: text/markdown` with `Vary: Accept` and an `x-markdown-tokens`
+estimate; browsers keep getting HTML.
+
+```sh
+npm test                      # the worker's tests
+npx wrangler deploy -c worker/wrangler.toml
+```
+
+The worker is deployed by hand: the site workflow does not hold Cloudflare
+credentials. Its route runs on every request to the site, and the free plan
+allows 100,000 a day: the route is set to **fail open**, so past that limit the
+site is served as if the worker did not exist.
+
+Only URLs ending in `/` are negotiated; the origin redirects the others there
+first, so the relative links in the Markdown resolve.
