@@ -57,7 +57,7 @@ humaine datée :
 5. **CI/CD — TRANCHÉ.** **GitHub Actions** (`nascent-tech/memless`). Un `ci.yml` sur push/PR, matrice
    sur les quatre cibles de la question 7 : `cargo check --all-targets`, `cargo clippy --all-targets -- -D
    warnings`, `cargo test`, `cargo build --release -p memless-capi`, `go test ./...` (Go 1.21),
-   `composer install && vendor/bin/phpunit` (PHP 8.3 + `ext-ffi`), `npm ci && npm test` (Node 24 LTS), puis
+   `composer install && vendor/bin/phpunit` (PHP 8.3 + `ext-ffi`, 8.5 préinstallé sur macOS Intel), `npm ci && npm test` (Node 24 LTS), puis
    `bash harness/parity/run.sh` et les tests `tests/detects-*.sh`. Un `release.yml` sur tag `v*`
    reproduit ces builds et produit les artefacts de la question 6. Le run vert de `ci.yml` sur chaque
    famille est la preuve ; sa ligne (date, famille, révision, lien du run, verdict) est recopiée dans
