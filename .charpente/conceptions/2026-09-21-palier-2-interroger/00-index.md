@@ -3,9 +3,9 @@ type: conception
 titre: Palier 2 — Interroger
 slug: palier-2-interroger
 cree_le: 2026-09-21T19:48:00+0000
-mis_a_jour_le: 2026-09-21T21:48:18+0000
+mis_a_jour_le: 2026-09-26T11:36:49+0000
 branche: main
-statut: livre
+statut: perime
 ---
 
 <!-- charpente-navigation -->

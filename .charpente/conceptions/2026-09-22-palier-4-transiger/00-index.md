@@ -3,9 +3,9 @@ type: conception
 titre: Palier 4 — Transiger
 slug: palier-4-transiger
 cree_le: 2026-09-22T01:45:00+0000
-mis_a_jour_le: 2026-09-22T01:45:00+0000
+mis_a_jour_le: 2026-09-26T11:36:49+0000
 branche: main
-statut: valide
+statut: perime
 ---
 
 <!-- charpente-navigation -->

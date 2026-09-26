@@ -3,9 +3,9 @@ type: plan
 titre: Palier 3 — Écrire
 slug: palier-3-ecrire
 cree_le: 2026-09-21T21:50:00+0000
-mis_a_jour_le: 2026-09-22T00:39:38+0000
+mis_a_jour_le: 2026-09-26T11:36:49+0000
 branche: main
-statut: livre
+statut: perime
 ---
 
 <!-- charpente-navigation -->
