@@ -78,3 +78,50 @@ Le regroupement annoncé au premier relevé comme « le levier si le débit deve
 (la réécrite finale reste atomique par substitution). Le tout-ou-rien du palier 4 n'est donc pas
 qu'une sémantique — c'est aussi le seul chemin vers un débit d'écriture élevé sur ce moteur, où la
 durabilité, non la taille, domine le coût.
+
+# Banc de rechargement — palier 5 « Recharger »
+
+Troisième relevé, ajouté au palier 5. Mesure, pour un fichier `rows` de **k** lignes (même génération
+que le premier relevé), trois durées : un **chargement** complet (`load`), un **rechargement**
+(`reload`) d'une instance vivante, et une **suite de 100 rechargements** de la même instance.
+Percentiles **p50/p95** sur **20 répétitions**. Reproduire par `bash harness/bench/run.sh` (bâtit et
+lance aussi `crates/memless-engine/examples/bench_reload.rs`) ; recopier les nombres ici à la main.
+
+## Relevé — 2026-09-26 — palier 5 (rechargement)
+
+Machine : `Darwin arm64`, Apple M3 Max, profil `release`, révision `07ae099` (plus ce banc). Durées
+en **microsecondes**.
+
+| k | load p50 | load p95 | reload p50 | reload p95 | suite100 p50 | suite100 p95 |
+|---|---|---|---|---|---|---|
+| 4 | 62 | 128 | 24 | 47 | 2 372 | 3 023 |
+| 100 | 171 | 214 | 160 | 195 | 15 929 | 16 320 |
+| 1 000 | 1 495 | 1 586 | 1 446 | 1 600 | 143 653 | 146 373 |
+| 10 000 | 14 558 | 14 979 | 14 304 | 14 744 | 1 422 123 | 1 434 999 |
+
+## Lecture
+
+- **Recharger coûte un chargement** : dès k=100, le rechargement p50 est à 94–98 % du chargement
+  p50 (160 contre 171 µs, 1 446 contre 1 495 µs, 14 304 contre 14 558 µs). Les deux suivent le même
+  chemin — relire le fichier entier, redériver la structure — et rien n'est réutilisé d'un appel à
+  l'autre. L'écart à k=4 (24 contre 62 µs) ne vient donc pas du code : le chargement mesuré lit un
+  fichier tout juste créé, le rechargement un fichier déjà lu une fois ; ce banc ne l'isole pas.
+- **Le coût est O(n) et linéaire en nombre de rechargements** : la suite de 100 rechargements vaut
+  ~100 × un rechargement (≈ 24 µs, 159 µs, 1,44 ms, 14,2 ms par rechargement), sans amortissement
+  ni dégradation au fil de la suite.
+- **Aucun `fsync`** : contrairement à l'écriture, le rechargement ne fait que lire. Dans la même
+  exécution, l'écriture isolée du premier banc mesurait 8 834 / 9 300 / 10 949 / 18 293 µs (p50,
+  k = 4 / 100 / 1 000 / 10 000) : un rechargement reste en dessous d'une écriture isolée à toutes
+  les tailles mesurées — ~370× moins à k=4, ~7,6× à k=1 000, ~1,3× à k=10 000.
+
+## Ce que ça informe (brief §4, §17.2)
+
+Le brief ne fixe aucun seuil chiffré ; il dit ce qui casserait le pari : que le coût de lecture
+complète devienne le geste le plus lent de la suite de tests elle-même (§4), une suite qui recharge
+entre chaque test payant ce coût à chaque rechargement (§17.2). Mesuré : **ce n'est le cas à aucune
+des tailles relevées**. Recharger entre chaque test coûte, par test, moins qu'une seule écriture
+isolée — de quelques dizaines de microsecondes à k=4 jusqu'à ~1,4 ms à k=1 000. À k=10 000 le
+rechargement (~14,3 ms) rejoint l'ordre de grandeur d'une écriture (~18,3 ms) : cent tests qui
+rechargent chacun paient ~1,42 s de rechargements, du même ordre qu'une suite de 100 écritures
+(~1,80 s au même relevé). C'est à cette taille, et au-delà, que le coût de lecture complète cesse
+d'être négligeable devant le reste de la suite ; en dessous, il est dominé par l'écriture.
