@@ -6,7 +6,8 @@ namespace Memless;
 
 /**
  * The library this package bundles for a platform, as a path under lib/, or
- * null when none is bundled, such as on Windows or musl.
+ * null when none is bundled, such as on Windows, on musl, or on a Linux whose
+ * libc cannot be told.
  */
 final class Bundle
 {
@@ -26,20 +27,18 @@ final class Bundle
 
     public static function current(): ?string
     {
-        return self::library(PHP_OS_FAMILY, php_uname('m'), self::isMusl());
+        $libc = PHP_OS_FAMILY === 'Linux' ? Libc::current() : null;
+
+        return self::library(PHP_OS_FAMILY, php_uname('m'), $libc);
     }
 
-    public static function library(string $family, string $machine, bool $musl): ?string
+    public static function library(string $family, string $machine, ?string $libc): ?string
     {
+        if ($family === 'Linux' && $libc !== 'glibc') {
+            return null;
+        }
         $architecture = self::ARCHITECTURES[strtolower($machine)] ?? $machine;
 
-        return $musl ? null : self::LIBRARIES["{$family}-{$architecture}"] ?? null;
-    }
-
-    private static function isMusl(): bool
-    {
-        $ldd = is_readable('/usr/bin/ldd') ? file_get_contents('/usr/bin/ldd') : false;
-
-        return is_string($ldd) && str_contains($ldd, 'musl');
+        return self::LIBRARIES["{$family}-{$architecture}"] ?? null;
     }
 }

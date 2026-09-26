@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   packages `@nascent-tech/memless-<platform>` are no longer published; the versions up to 0.3.0 stay
   installable. The package grows to about 7.5 MB compressed.
 
+### Corrigé
+
+- The three bridges tell the libc the same way on Linux: `/usr/bin/ldd`, then (Node only) the
+  diagnostic report, then the dynamic loader under `/lib`, the musl loader winning over a glibc one.
+  A glibc image without `ldd`, such as distroless, still loads the bundled library; musl, or a libc
+  none of these can tell, loads none and ends on the error naming `MEMLESS_LIB`. The PHP and Go
+  bridges used to assume glibc without `ldd`, and failed to load on a musl image lacking it.
+
 ## [0.3.0] — 2026-09-26
 
 ### Modifié

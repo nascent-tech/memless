@@ -113,18 +113,19 @@ bridges:
    macOS, `$XDG_CACHE_HOME` or `~/.cache` on Linux). The directory is created
    `0700`, the file is written to a temporary name then renamed, and before
    every load its full SHA-256 is compared with the embedded bytes and the file
-   rewritten when they differ. On Linux with musl there is none;
+   rewritten when they differ. On Linux the bridge checks the libc
+   (`/usr/bin/ldd`, then the dynamic loader under `/lib`), because the
+   bundled libraries need glibc: musl, or a libc it cannot tell, has none;
 3. inside a checked-out workspace, `target/release/`, then `target/debug/`
    (`.dylib` before `.so`).
 
 When the cache directory cannot be used, the bridge moves on to step 3. If the
 user cache directory is mounted `noexec`, the extracted library cannot be
-loaded: set `MEMLESS_LIB`. Musl is recognised by `/usr/bin/ldd`; if
-`/usr/bin/ldd` is absent (a minimal musl image), the bridge assumes glibc and
-the load fails: set `MEMLESS_LIB`. The bundled Linux libraries need glibc
-2.39 or later (Ubuntu 24.04 or later); on an older glibc, set `MEMLESS_LIB` to
-a library built locally. When nothing is found, the error says to set `MEMLESS_LIB`. The library must speak
-ABI version 5. On another platform, or with your own build, set `MEMLESS_LIB`:
+loaded: set `MEMLESS_LIB`. The bundled Linux libraries need glibc 2.39 or
+later (Ubuntu 24.04 or later); on an older glibc, set `MEMLESS_LIB` to a
+library built locally. When nothing is found, the error says to set
+`MEMLESS_LIB`. The library must speak ABI version 5. On another platform, or
+with your own build, set `MEMLESS_LIB`:
 
 ```sh
 cargo build --release -p memless-capi

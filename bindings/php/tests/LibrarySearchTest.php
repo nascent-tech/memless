@@ -119,11 +119,17 @@ final class LibrarySearchTest extends TestCase
 
     public function testTheFourPublishedPlatformsHaveABundleAndTheOthersNone(): void
     {
-        $this->assertSame('darwin-arm64/libmemless_capi.dylib', Bundle::library('Darwin', 'arm64', false));
-        $this->assertSame('darwin-x64/libmemless_capi.dylib', Bundle::library('Darwin', 'x86_64', false));
-        $this->assertSame('linux-x64-gnu/libmemless_capi.so', Bundle::library('Linux', 'x86_64', false));
-        $this->assertSame('linux-arm64-gnu/libmemless_capi.so', Bundle::library('Linux', 'aarch64', false));
-        $this->assertNull(Bundle::library('Linux', 'x86_64', true));
-        $this->assertNull(Bundle::library('Windows', 'AMD64', false));
+        $this->assertSame('darwin-arm64/libmemless_capi.dylib', Bundle::library('Darwin', 'arm64', null));
+        $this->assertSame('darwin-x64/libmemless_capi.dylib', Bundle::library('Darwin', 'x86_64', null));
+        $this->assertSame('linux-x64-gnu/libmemless_capi.so', Bundle::library('Linux', 'x86_64', 'glibc'));
+        $this->assertSame('linux-arm64-gnu/libmemless_capi.so', Bundle::library('Linux', 'aarch64', 'glibc'));
+        $this->assertNull(Bundle::library('Linux', 'x86_64', 'musl'));
+        $this->assertNull(Bundle::library('Windows', 'AMD64', null));
+    }
+
+    public function testALinuxWhoseLibcCannotBeToldHasNoBundle(): void
+    {
+        $this->assertNull(Bundle::library('Linux', 'x86_64', null));
+        $this->assertNull(Bundle::library('Linux', 'aarch64', null));
     }
 }

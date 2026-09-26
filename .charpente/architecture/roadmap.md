@@ -85,7 +85,8 @@ humaine datée :
    La résolution de la bibliothèque dans les trois ponts devient :
    `MEMLESS_LIB` (prioritaire, erreur claire s'il désigne un fichier absent), puis la **bibliothèque embarquée par le paquet** de la plateforme courante,
    puis `target/release` / `target/debug` du workspace (développement) — identique dans les trois
-   ponts, aucune règle métier n'entre dans un pont. Linux musl et Windows n'ont pas de bibliothèque
+   ponts, aucune règle métier n'entre dans un pont. Linux musl ou à libc indéterminable (ni
+   `/usr/bin/ldd` ni chargeur dynamique reconnu sous `/lib`) et Windows n'ont pas de bibliothèque
    embarquée : ils retombent à `target/`, puis à l'erreur claire citant `MEMLESS_LIB`. Cadrage :
    `.charpente/cadrage/2026-09-26-palier-6-publier.md` (révisions « miroir Go » et « paquet npm unique » en fin de document). La
    publication npm, Packagist et le miroir Go attendent les comptes du propriétaire (variables
