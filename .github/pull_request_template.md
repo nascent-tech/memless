@@ -1,5 +1,5 @@
-<!-- A maintainer squash-merges this pull request: its title (or, for a single
-     commit, that commit's title) becomes the commit on main. Write both as a
+<!-- A maintainer squash-merges this pull request: its title becomes the commit
+     title on main and this description its body. Write the title as a
      Conventional Commit, such as fix(php): … or feat(node): … -->
 
 ## Why

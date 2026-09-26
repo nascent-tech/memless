@@ -127,8 +127,8 @@ for test in harness/parity/tests/detects-*.sh; do bash "$test"; done
 ## Commits and pull requests
 
 - One pull request carries one change. A maintainer squash-merges it: its
-  title (or, for a single commit, that commit's title) becomes the commit on
-  `main`, so write both the same way.
+  title becomes the commit title on `main`, and its description the commit
+  body. The commits inside your branch can be named as you like.
 - Titles follow [Conventional Commits](https://www.conventionalcommits.org):
   `feat(node): …`, `fix(php): …`, `docs: …`, `test(parity): …`,
   `refactor(domain): …`. Mark a breaking change with `!` (`feat(go)!: …`) and
