@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Non publié]
 
+## [0.1.0] — 2026-09-26
+
 ### Ajouté
 
 - Node.js bridge (`bindings/node`) that loads the memless C library through koffi, with no native
@@ -43,3 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   existing file, then the release build, then the debug build (Go used to prefer the debug build) —
   and load it on the first call that needs it, never at import time.
 - The C ABI version is now 5, and the PHP, Go and Node.js bridges require an ABI 5 library.
+- The PHP bridge requires PHP 8.1 or later (it used to declare 7.4).
+
+[Non publié]: https://github.com/nascent-tech/memless/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/nascent-tech/memless/releases/tag/v0.1.0
