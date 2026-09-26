@@ -1,0 +1,109 @@
+---
+title: Quick start
+description: Load a YAML file, change it inside a transaction, and read it back.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Start from a small YAML file with two tables:
+
+```yaml title="data.yaml"
+users:
+  - id: 1
+    name: Ada
+  - id: 2
+    name: Grace
+wallets:
+  - id: w1
+    user_id: 2        # points at users.id = 2, because the column is named user_id
+    amount: 100
+```
+
+The example below moves money between two wallets inside a transaction, then
+reads the wallets back.
+
+<Tabs syncKey="lang">
+	<TabItem label="Node.js" icon="seti:javascript">
+		```js
+		const { load } = require('@nascent-tech/memless');
+
+		const db = load('data.yaml');
+		try {
+		  db.begin();
+		  db.execute("UPDATE wallets SET amount = 50 WHERE id = 'w1'");
+		  db.execute("INSERT INTO wallets (id, user_id, amount) VALUES ('w2', 1, 50)");
+		  db.commit(); // data.yaml is rewritten once, here
+
+		  const { columns, rows } = db.query('SELECT id, amount FROM wallets ORDER BY amount DESC');
+		  console.log(columns, rows); // [ 'id', 'amount' ] [ [ 'w1', 50 ], [ 'w2', 50 ] ]
+		} finally {
+		  db.release();
+		}
+		```
+	</TabItem>
+	<TabItem label="PHP" icon="seti:php">
+		```php
+		<?php
+
+		require 'vendor/autoload.php';
+
+		use Memless\Instance;
+
+		$db = Instance::load('data.yaml');
+
+		$db->begin();
+		$db->execute("UPDATE wallets SET amount = 50 WHERE id = 'w1'");
+		$db->execute("INSERT INTO wallets (id, user_id, amount) VALUES ('w2', 1, 50)");
+		$db->commit(); // data.yaml is rewritten once, here
+
+		print_r($db->query('SELECT id, amount FROM wallets ORDER BY amount DESC'));
+		// two rows: ['id' => 'w1', 'amount' => 50] and ['id' => 'w2', 'amount' => 50]
+
+		$db->release();
+		```
+	</TabItem>
+	<TabItem label="Go" icon="seti:go">
+		```go
+		package main
+
+		import (
+			"fmt"
+			"log"
+
+			memless "github.com/nascent-tech/memless-go"
+		)
+
+		func main() {
+			db, err := memless.Load("data.yaml")
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer db.Release()
+
+			check := func(err error) {
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			check(db.Begin())
+			_, err = db.Execute("UPDATE wallets SET amount = 50 WHERE id = 'w1'")
+			check(err)
+			_, err = db.Execute("INSERT INTO wallets (id, user_id, amount) VALUES ('w2', 1, 50)")
+			check(err)
+			check(db.Commit()) // data.yaml is rewritten once, here
+
+			rows, err := db.Query("SELECT id, amount FROM wallets ORDER BY amount DESC")
+			check(err)
+			fmt.Println(rows.Columns, rows.Rows) // [id amount] [[w1 50] [w2 50]]
+		}
+		```
+	</TabItem>
+</Tabs>
+
+## Using it in tests
+
+Memless writes to the file it loaded. In a test, load a **copy** of your
+fixture, so that every test starts from the same data and the original stays
+untouched. To keep the original instead, open a transaction at the start of the
+test and roll it back at the end: nothing is written until a `COMMIT`.
