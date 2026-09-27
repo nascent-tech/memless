@@ -39,6 +39,8 @@ html {
 	--ml-muted: #c9ccd1;
 	--ml-band: #101216;
 	--ml-splash-width: 67.5rem;
+	--ml-docs-width: 90rem;
+	--ml-docs-gutter: max(0px, (100% - var(--ml-docs-width)) / 2);
 	--ml-refused: #262931;
 	--ml-ok: #8fd3b0;
 	--ml-no: #f2b880;
@@ -133,4 +135,19 @@ a {
 :root:not([data-has-sidebar]) header.header > .header {
 	max-width: var(--ml-splash-width);
 	margin-inline: auto;
+}
+
+@media (min-width: 50rem) {
+	:root[data-has-sidebar] header.header {
+		padding-inline: calc(var(--ml-docs-gutter) + var(--sl-nav-pad-x));
+	}
+
+	:root[data-has-sidebar] .sidebar-pane {
+		inset-inline-start: var(--ml-docs-gutter);
+	}
+
+	:root[data-has-sidebar] .main-frame {
+		padding-inline-start: calc(var(--ml-docs-gutter) + var(--sl-content-inline-start, 0px));
+		padding-inline-end: var(--ml-docs-gutter);
+	}
 }
