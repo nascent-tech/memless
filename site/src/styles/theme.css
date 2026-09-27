@@ -38,6 +38,7 @@ html {
 	--ml-panel-border: #2c2f37;
 	--ml-muted: #c9ccd1;
 	--ml-band: #101216;
+	--ml-splash-width: 67.5rem;
 	--ml-refused: #262931;
 	--ml-ok: #8fd3b0;
 	--ml-no: #f2b880;
@@ -123,4 +124,13 @@ kbd {
 
 a {
 	text-underline-offset: 0.2em;
+}
+
+:root:not([data-has-sidebar]) header.header {
+	padding-inline: var(--sl-content-pad-x);
+}
+
+:root:not([data-has-sidebar]) header.header > .header {
+	max-width: var(--ml-splash-width);
+	margin-inline: auto;
 }
