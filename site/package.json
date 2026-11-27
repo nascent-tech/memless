@@ -7,14 +7,14 @@
     "build": "astro build && node scripts/markdown-pages.mjs",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "node --test \"worker/*.test.js\""
+    "test": "node --test \"worker/*.test.js\" \"scripts/*.test.mjs\""
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.4",
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "astro": "^7.2.10",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "starlight-llms-txt": "^0.12.0"
   },
   "allowScripts": {
