@@ -3,7 +3,7 @@
 - Date: 2026-11-27
 - Author: Security auditor (GRC)
 - Flow: dependency-vulnerability, step assess
-- Status: open, fix to be done by the software engineer
+- Status: fixed on this branch (vite 8.3.3 in `site/package-lock.json`); close the finding after merge with a clean dependency scan
 
 ## Facts
 
